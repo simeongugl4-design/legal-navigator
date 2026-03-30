@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Search, Mic, MicOff, Scale, Globe, ArrowLeft, RotateCcw, BookOpen, Gavel, FileText, Lightbulb } from "lucide-react";
+import { Send, Paperclip, Search, Mic, MicOff, Scale, ArrowLeft, RotateCcw, BookOpen, Gavel, FileText, Lightbulb, Download, Share2, BookMarked, AlertTriangle } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -14,14 +15,19 @@ interface Message {
 }
 
 const suggestedPrompts = [
-  { icon: Gavel, text: "What are my rights if arrested?" },
-  { icon: FileText, text: "Explain freedom of speech in my constitution" },
+  { icon: Gavel, text: "What are my fundamental rights under the constitution?" },
+  { icon: FileText, text: "Explain freedom of speech protections in my constitution" },
   { icon: BookOpen, text: "What amendments protect property rights?" },
-  { icon: Lightbulb, text: "How to file a constitutional complaint?" },
+  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy" },
+  { icon: BookMarked, text: "List the most important articles of my constitution" },
+  { icon: AlertTriangle, text: "What are my rights if I am arrested by police?" },
 ];
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prolaw-chat`;
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { selectedCountry, selectedLanguage, reset } = useAppStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -31,6 +37,7 @@ const ChatPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
     if (!selectedCountry || !selectedLanguage) {
@@ -42,56 +49,116 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const generateResponse = (userMessage: string): string => {
-    const country = selectedCountry?.name || "your country";
-    const constitution = selectedCountry?.constitutionName || "your constitution";
-    const lang = selectedLanguage?.name || "your language";
+  const streamChat = useCallback(async (allMessages: { role: string; content: string }[]) => {
+    const resp = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({
+        messages: allMessages,
+        country: selectedCountry?.name,
+        constitution: selectedCountry?.constitutionName,
+        language: selectedLanguage?.name,
+      }),
+    });
 
-    // Simulated legal AI response
-    return `## Legal Analysis — ${constitution}
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      if (resp.status === 429) {
+        toast({ title: "Rate Limited", description: "Too many requests. Please wait a moment.", variant: "destructive" });
+      } else if (resp.status === 402) {
+        toast({ title: "Credits Exhausted", description: "Please add AI credits in Settings > Workspace > Usage.", variant: "destructive" });
+      }
+      throw new Error(errorData.error || "Failed to get response");
+    }
 
-Based on your query regarding: **"${userMessage}"**
+    if (!resp.body) throw new Error("No response body");
 
-### Constitutional Framework
-Under the ${constitution}, the following provisions are relevant to your case:
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let assistantContent = "";
+    const assistantId = (Date.now() + 1).toString();
 
-**Applicable Sections & Articles:**
-- **Article/Section [Relevant Number]**: This provision establishes the fundamental right related to your query under ${country}'s legal framework.
-- **Amendment [Number]**: Provides additional protections and clarifications.
+    // Add empty assistant message
+    setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
 
-### Legal Strategy & Recommendations
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-1. **Primary Defense**: Invoke the constitutional guarantee under the relevant article that protects your rights in this matter.
-2. **Supporting Acts**: Reference the specific legislative acts that implement this constitutional provision.
-3. **Precedent Cases**: Courts in ${country} have historically ruled in favor of citizens on similar matters.
+      let newlineIdx: number;
+      while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+        let line = buffer.slice(0, newlineIdx);
+        buffer = buffer.slice(newlineIdx + 1);
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        if (line.startsWith(":") || line.trim() === "") continue;
+        if (!line.startsWith("data: ")) continue;
 
-### Key Legal Terms to Use
-- **Constitutional Right**: The fundamental right guaranteed by ${constitution}
-- **Due Process**: Your right to fair legal proceedings
-- **Legal Standing**: Your qualification to bring this case before a court
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") break;
 
-### Action Steps
-1. Document all evidence related to your case
-2. File your complaint with the appropriate court
-3. Reference the specific constitutional articles mentioned above
-4. Consider engaging a licensed attorney in ${country}
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) {
+            assistantContent += content;
+            const finalContent = assistantContent;
+            setMessages(prev =>
+              prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m)
+            );
+          }
+        } catch {
+          buffer = line + "\n" + buffer;
+          break;
+        }
+      }
+    }
 
----
-*⚖️ This analysis is based on ${constitution} and provided in ${lang}. Always consult a licensed legal professional for official legal advice.*`;
-  };
+    // Final flush
+    if (buffer.trim()) {
+      for (let raw of buffer.split("\n")) {
+        if (!raw) continue;
+        if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+        if (raw.startsWith(":") || raw.trim() === "") continue;
+        if (!raw.startsWith("data: ")) continue;
+        const jsonStr = raw.slice(6).trim();
+        if (jsonStr === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) {
+            assistantContent += content;
+            const finalContent = assistantContent;
+            setMessages(prev =>
+              prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m)
+            );
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  }, [selectedCountry, selectedLanguage, toast]);
 
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isLoading) return;
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: text.trim(), timestamp: new Date() };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response delay
-    await new Promise((r) => setTimeout(r, 1500));
-    const response = generateResponse(text.trim());
-    setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: response, timestamp: new Date() }]);
-    setIsLoading(false);
+    const chatHistory = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+
+    try {
+      await streamChat(chatHistory);
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to get response", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -101,10 +168,60 @@ Under the ${constitution}, the following provisions are relevant to your case:
     }
   };
 
-  const toggleRecording = () => setIsRecording(!isRecording);
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        toast({ title: "Voice Input", description: "Voice recording captured. Speech-to-text processing requires additional setup." });
+      };
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setIsRecording(true);
+      toast({ title: "Recording", description: "Listening... Click mic again to stop." });
+    } catch {
+      toast({ title: "Microphone Error", description: "Could not access microphone. Please check permissions.", variant: "destructive" });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload files smaller than 10MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = reader.result as string;
+      const prefix = `[Uploaded file: ${file.name}]\n\nPlease analyze this document in the context of ${selectedCountry?.constitutionName} and provide legal guidance:\n\n`;
+      sendMessage(prefix + content.slice(0, 3000));
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const exportChat = () => {
+    const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.timestamp.toLocaleString()}\n${m.content}`).join("\n\n---\n\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ProLAW_${selectedCountry?.name}_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const filteredMessages = searchQuery
-    ? messages.filter((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
   if (!selectedCountry || !selectedLanguage) return null;
@@ -124,10 +241,16 @@ Under the ${constitution}, the following provisions are relevant to your case:
           </p>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setShowSearch(!showSearch)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+          <button onClick={() => setShowSearch(!showSearch)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Search">
             <Search className="w-4 h-4" />
           </button>
-          <button onClick={() => { setMessages([]); }} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+          <button onClick={exportChat} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Export chat">
+            <Download className="w-4 h-4" />
+          </button>
+          <button onClick={() => { if (navigator.share) navigator.share({ title: "ProLAW Chat", text: messages.map(m => m.content).join("\n") }); }} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Share">
+            <Share2 className="w-4 h-4" />
+          </button>
+          <button onClick={() => setMessages([])} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="New chat">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
@@ -138,13 +261,7 @@ Under the ${constitution}, the following provisions are relevant to your case:
         {showSearch && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-b border-border">
             <div className="px-4 py-2">
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversation..."
-                className="w-full bg-secondary/50 border border-border rounded-lg py-2 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                autoFocus
-              />
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search conversation..." className="w-full bg-secondary/50 border border-border rounded-lg py-2 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" autoFocus />
             </div>
           </motion.div>
         )}
@@ -158,16 +275,15 @@ Under the ${constitution}, the following provisions are relevant to your case:
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
               <h3 className="text-lg font-serif font-bold text-foreground">Legal AI Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Connected to {selectedCountry.constitutionName}. Ask about your rights, laws, or describe your case.
+                Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>. Ask about your rights, laws, or describe your court case for a full defense strategy.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Responding in <span className="text-primary">{selectedLanguage.name}</span>
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
               {suggestedPrompts.map((prompt, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(prompt.text)}
-                  className="glass-panel p-3 text-left hover:bg-secondary/80 transition-colors group"
-                >
+                <button key={i} onClick={() => sendMessage(prompt.text)} className="glass-panel p-3 text-left hover:bg-secondary/80 transition-colors group">
                   <prompt.icon className="w-4 h-4 text-primary mb-1.5 group-hover:scale-110 transition-transform" />
                   <p className="text-xs text-secondary-foreground">{prompt.text}</p>
                 </button>
@@ -176,19 +292,10 @@ Under the ${constitution}, the following provisions are relevant to your case:
           </div>
         ) : (
           filteredMessages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "glass-panel rounded-bl-md"
-              }`}>
+            <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "glass-panel rounded-bl-md"}`}>
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border">
+                  <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
@@ -202,7 +309,7 @@ Under the ${constitution}, the following provisions are relevant to your case:
           ))
         )}
 
-        {isLoading && (
+        {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="glass-panel rounded-2xl rounded-bl-md px-4 py-3">
               <div className="flex gap-1.5">
@@ -219,8 +326,8 @@ Under the ${constitution}, the following provisions are relevant to your case:
       {/* Input */}
       <div className="shrink-0 p-3 border-t border-border bg-card/80 backdrop-blur-xl">
         <div className="flex items-end gap-2 max-w-3xl mx-auto">
-          <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,.txt,.jpg,.png" />
-          <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0">
+          <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,.txt,.jpg,.png" onChange={handleFileUpload} />
+          <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0" title="Upload document">
             <Paperclip className="w-5 h-5" />
           </button>
           <div className="flex-1 glass-panel flex items-end gap-1 px-3 py-1.5">
@@ -241,9 +348,8 @@ Under the ${constitution}, the following provisions are relevant to your case:
           </div>
           <button
             onClick={toggleRecording}
-            className={`p-2.5 rounded-xl transition-colors shrink-0 ${
-              isRecording ? "bg-destructive text-destructive-foreground" : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-            }`}
+            className={`p-2.5 rounded-xl transition-colors shrink-0 ${isRecording ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary text-muted-foreground hover:text-foreground"}`}
+            title={isRecording ? "Stop recording" : "Voice input"}
           >
             {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
@@ -255,6 +361,9 @@ Under the ${constitution}, the following provisions are relevant to your case:
             <Send className="w-5 h-5" />
           </button>
         </div>
+        <p className="text-[10px] text-muted-foreground text-center mt-2">
+          ⚖️ ProLAW provides AI-generated legal guidance. Always consult a licensed attorney for professional legal advice.
+        </p>
       </div>
     </div>
   );

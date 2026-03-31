@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
+import AgentModeSelector from "@/components/chat/AgentModeSelector";
+import { agentModes } from "@/components/chat/agentModes";
 
 interface Message {
   id: string;

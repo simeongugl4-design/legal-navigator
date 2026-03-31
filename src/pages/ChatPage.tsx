@@ -62,6 +62,7 @@ const ChatPage = () => {
         country: selectedCountry?.name,
         constitution: selectedCountry?.constitutionName,
         language: selectedLanguage?.name,
+        mode: agentMode,
       }),
     });
 

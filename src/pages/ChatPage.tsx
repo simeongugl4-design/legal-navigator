@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Search, Mic, MicOff, Scale, ArrowLeft, RotateCcw, BookOpen, Gavel, FileText, Lightbulb, Download, Share2, BookMarked, AlertTriangle } from "lucide-react";
+import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import prolawLogo from "@/assets/prolaw-logo.jpeg";
 import { useToast } from "@/hooks/use-toast";
+import ChatHeader from "@/components/chat/ChatHeader";
+import ChatInput from "@/components/chat/ChatInput";
 
 interface Message {
   id: string;
@@ -18,9 +19,9 @@ const suggestedPrompts = [
   { icon: Gavel, text: "What are my fundamental rights under the constitution?" },
   { icon: FileText, text: "Explain freedom of speech protections in my constitution" },
   { icon: BookOpen, text: "What amendments protect property rights?" },
-  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy" },
-  { icon: BookMarked, text: "List the most important articles of my constitution" },
-  { icon: AlertTriangle, text: "What are my rights if I am arrested by police?" },
+  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy with confidence assessment" },
+  { icon: BookMarked, text: "Simulate a court case about wrongful termination and provide confidence rating" },
+  { icon: AlertTriangle, text: "What are my rights if I am arrested by police? Include case simulation" },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prolaw-chat`;
@@ -36,13 +37,10 @@ const ChatPage = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
-    if (!selectedCountry || !selectedLanguage) {
-      navigate("/");
-    }
+    if (!selectedCountry || !selectedLanguage) navigate("/");
   }, [selectedCountry, selectedLanguage, navigate]);
 
   useEffect(() => {
@@ -66,11 +64,8 @@ const ChatPage = () => {
 
     if (!resp.ok) {
       const errorData = await resp.json().catch(() => ({}));
-      if (resp.status === 429) {
-        toast({ title: "Rate Limited", description: "Too many requests. Please wait a moment.", variant: "destructive" });
-      } else if (resp.status === 402) {
-        toast({ title: "Credits Exhausted", description: "Please add AI credits in Settings > Workspace > Usage.", variant: "destructive" });
-      }
+      if (resp.status === 429) toast({ title: "Rate Limited", description: "Too many requests. Please wait a moment.", variant: "destructive" });
+      else if (resp.status === 402) toast({ title: "Credits Exhausted", description: "Please add AI credits in Settings > Workspace > Usage.", variant: "destructive" });
       throw new Error(errorData.error || "Failed to get response");
     }
 
@@ -82,7 +77,6 @@ const ChatPage = () => {
     let assistantContent = "";
     const assistantId = (Date.now() + 1).toString();
 
-    // Add empty assistant message
     setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
 
     while (true) {
@@ -107,9 +101,7 @@ const ChatPage = () => {
           if (content) {
             assistantContent += content;
             const finalContent = assistantContent;
-            setMessages(prev =>
-              prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m)
-            );
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m));
           }
         } catch {
           buffer = line + "\n" + buffer;
@@ -118,7 +110,6 @@ const ChatPage = () => {
       }
     }
 
-    // Final flush
     if (buffer.trim()) {
       for (let raw of buffer.split("\n")) {
         if (!raw) continue;
@@ -133,9 +124,7 @@ const ChatPage = () => {
           if (content) {
             assistantContent += content;
             const finalContent = assistantContent;
-            setMessages(prev =>
-              prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m)
-            );
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: finalContent } : m));
           }
         } catch { /* ignore */ }
       }
@@ -148,9 +137,7 @@ const ChatPage = () => {
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
-
     const chatHistory = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
-
     try {
       await streamChat(chatHistory);
     } catch (e) {
@@ -158,13 +145,6 @@ const ChatPage = () => {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to get response", variant: "destructive" });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
     }
   };
 
@@ -181,14 +161,14 @@ const ChatPage = () => {
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
-        toast({ title: "Voice Input", description: "Voice recording captured. Speech-to-text processing requires additional setup." });
+        toast({ title: "Voice Input", description: "Voice recording captured." });
       };
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       toast({ title: "Recording", description: "Listening... Click mic again to stop." });
     } catch {
-      toast({ title: "Microphone Error", description: "Could not access microphone. Please check permissions.", variant: "destructive" });
+      toast({ title: "Microphone Error", description: "Could not access microphone.", variant: "destructive" });
     }
   };
 
@@ -202,8 +182,7 @@ const ChatPage = () => {
     const reader = new FileReader();
     reader.onload = () => {
       const content = reader.result as string;
-      const prefix = `[Uploaded file: ${file.name}]\n\nPlease analyze this document in the context of ${selectedCountry?.constitutionName} and provide legal guidance:\n\n`;
-      sendMessage(prefix + content.slice(0, 3000));
+      sendMessage(`[Uploaded file: ${file.name}]\n\nAnalyze this document under ${selectedCountry?.constitutionName}. Provide confidence assessment and case simulation:\n\n${content.slice(0, 3000)}`);
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -220,6 +199,10 @@ const ChatPage = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleShare = () => {
+    if (navigator.share) navigator.share({ title: "ProLAW Chat", text: messages.map(m => m.content).join("\n") });
+  };
+
   const filteredMessages = searchQuery
     ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
@@ -228,33 +211,18 @@ const ChatPage = () => {
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Header */}
-      <header className="glass-panel rounded-none border-x-0 border-t-0 px-4 py-3 flex items-center gap-3 shrink-0">
-        <button onClick={() => { reset(); navigate("/"); }} className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <img src={prolawLogo} alt="ProLAW" className="w-8 h-8 rounded-lg" />
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-foreground truncate">ProLAW</h2>
-          <p className="text-[11px] text-muted-foreground truncate">
-            {selectedCountry.flag} {selectedCountry.name} • {selectedLanguage.name} • {selectedCountry.constitutionName}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <button onClick={() => setShowSearch(!showSearch)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Search">
-            <Search className="w-4 h-4" />
-          </button>
-          <button onClick={exportChat} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Export chat">
-            <Download className="w-4 h-4" />
-          </button>
-          <button onClick={() => { if (navigator.share) navigator.share({ title: "ProLAW Chat", text: messages.map(m => m.content).join("\n") }); }} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Share">
-            <Share2 className="w-4 h-4" />
-          </button>
-          <button onClick={() => setMessages([])} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="New chat">
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+      <ChatHeader
+        countryFlag={selectedCountry.flag}
+        countryName={selectedCountry.name}
+        languageName={selectedLanguage.name}
+        constitutionName={selectedCountry.constitutionName}
+        showSearch={showSearch}
+        onToggleSearch={() => setShowSearch(!showSearch)}
+        onExport={exportChat}
+        onShare={handleShare}
+        onReset={() => setMessages([])}
+        onBack={() => { reset(); navigate("/"); }}
+      />
 
       {/* Search bar */}
       <AnimatePresence>
@@ -275,10 +243,10 @@ const ChatPage = () => {
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
               <h3 className="text-lg font-serif font-bold text-foreground">Legal AI Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>. Ask about your rights, laws, or describe your court case for a full defense strategy.
+                Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>. Ask about your rights, laws, or describe your court case for a full defense strategy with confidence ratings and simulation.
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Responding in <span className="text-primary">{selectedLanguage.name}</span>
+                Responding in <span className="text-primary">{selectedLanguage.name}</span> • 📊 Confidence Ratings • ⚖️ Case Simulation
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
@@ -323,48 +291,15 @@ const ChatPage = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="shrink-0 p-3 border-t border-border bg-card/80 backdrop-blur-xl">
-        <div className="flex items-end gap-2 max-w-3xl mx-auto">
-          <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,.txt,.jpg,.png" onChange={handleFileUpload} />
-          <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0" title="Upload document">
-            <Paperclip className="w-5 h-5" />
-          </button>
-          <div className="flex-1 glass-panel flex items-end gap-1 px-3 py-1.5">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={`Describe your legal case or question...`}
-              rows={1}
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none py-1.5 max-h-32"
-              style={{ minHeight: "36px" }}
-              onInput={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                t.style.height = "36px";
-                t.style.height = t.scrollHeight + "px";
-              }}
-            />
-          </div>
-          <button
-            onClick={toggleRecording}
-            className={`p-2.5 rounded-xl transition-colors shrink-0 ${isRecording ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary text-muted-foreground hover:text-foreground"}`}
-            title={isRecording ? "Stop recording" : "Voice input"}
-          >
-            {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || isLoading}
-            className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 shadow-lg shadow-primary/20"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
-          ⚖️ ProLAW provides AI-generated legal guidance. Always consult a licensed attorney for professional legal advice.
-        </p>
-      </div>
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        isLoading={isLoading}
+        isRecording={isRecording}
+        onSend={sendMessage}
+        onToggleRecording={toggleRecording}
+        onFileUpload={handleFileUpload}
+      />
     </div>
   );
 };

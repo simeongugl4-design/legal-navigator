@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
+import AgentModeSelector from "@/components/chat/AgentModeSelector";
+import { agentModes } from "@/components/chat/agentModes";
 
 interface Message {
   id: string;
@@ -36,6 +38,7 @@ const ChatPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [agentMode, setAgentMode] = useState("legal-advisor");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -59,6 +62,7 @@ const ChatPage = () => {
         country: selectedCountry?.name,
         constitution: selectedCountry?.constitutionName,
         language: selectedLanguage?.name,
+        mode: agentMode,
       }),
     });
 
@@ -129,7 +133,7 @@ const ChatPage = () => {
         } catch { /* ignore */ }
       }
     }
-  }, [selectedCountry, selectedLanguage, toast]);
+  }, [selectedCountry, selectedLanguage, agentMode, toast]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -224,6 +228,8 @@ const ChatPage = () => {
         onBack={() => { reset(); navigate("/"); }}
       />
 
+      <AgentModeSelector activeMode={agentMode} onSelect={setAgentMode} />
+
       {/* Search bar */}
       <AnimatePresence>
         {showSearch && (
@@ -241,12 +247,12 @@ const ChatPage = () => {
           <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-center">
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
-              <h3 className="text-lg font-serif font-bold text-foreground">Legal AI Ready</h3>
+              <h3 className="text-lg font-serif font-bold text-foreground">ALAI Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>. Ask about your rights, laws, or describe your court case for a full defense strategy with confidence ratings and simulation.
+                <span className="text-primary">{agentModes.find(m => m.id === agentMode)?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Responding in <span className="text-primary">{selectedLanguage.name}</span> • 📊 Confidence Ratings • ⚖️ Case Simulation
+                {selectedLanguage.name} • 📊 Confidence Ratings • ⚖️ Case Simulation • 🔍 Risk Analysis
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">

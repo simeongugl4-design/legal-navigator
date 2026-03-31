@@ -228,6 +228,8 @@ const ChatPage = () => {
         onBack={() => { reset(); navigate("/"); }}
       />
 
+      <AgentModeSelector activeMode={agentMode} onSelect={setAgentMode} />
+
       {/* Search bar */}
       <AnimatePresence>
         {showSearch && (

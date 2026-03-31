@@ -38,6 +38,7 @@ const ChatPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [agentMode, setAgentMode] = useState("legal-advisor");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 

@@ -133,7 +133,7 @@ const ChatPage = () => {
         } catch { /* ignore */ }
       }
     }
-  }, [selectedCountry, selectedLanguage, toast]);
+  }, [selectedCountry, selectedLanguage, agentMode, toast]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;

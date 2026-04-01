@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle } from "lucide-react";
+import CaseSimulationVisuals from "@/components/chat/CaseSimulationVisuals";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -247,12 +248,12 @@ const ChatPage = () => {
           <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-center">
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
-              <h3 className="text-lg font-serif font-bold text-foreground">ALAI Ready</h3>
+              <h3 className="text-lg font-serif font-bold text-foreground">ProLAW Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                 <span className="text-primary">{agentModes.find(m => m.id === agentMode)?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {selectedLanguage.name} • 📊 Confidence Ratings • ⚖️ Case Simulation • 🔍 Risk Analysis
+                {selectedLanguage.name} • 📊 Risk Scoring • ⚖️ Case Simulation • 🔮 Outcome Predictions • ⏱️ Timeline Visualization
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
@@ -269,9 +270,12 @@ const ChatPage = () => {
             <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "glass-panel rounded-bl-md"}`}>
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
+                  <>
+                    <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
+                      <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "")}</ReactMarkdown>
+                    </div>
+                    <CaseSimulationVisuals content={msg.content} />
+                  </>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                 )}

@@ -248,12 +248,12 @@ const ChatPage = () => {
           <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-center">
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
-              <h3 className="text-lg font-serif font-bold text-foreground">ALAI Ready</h3>
+              <h3 className="text-lg font-serif font-bold text-foreground">ProLAW Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                 <span className="text-primary">{agentModes.find(m => m.id === agentMode)?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {selectedLanguage.name} • 📊 Confidence Ratings • ⚖️ Case Simulation • 🔍 Risk Analysis
+                {selectedLanguage.name} • 📊 Risk Scoring • ⚖️ Case Simulation • 🔮 Outcome Predictions • ⏱️ Timeline Visualization
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">

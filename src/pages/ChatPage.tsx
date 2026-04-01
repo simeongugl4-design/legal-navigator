@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle } from "lucide-react";
+import CaseSimulationVisuals from "@/components/chat/CaseSimulationVisuals";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";

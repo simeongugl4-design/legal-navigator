@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle } from "lucide-react";
+import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle, FilePlus } from "lucide-react";
 import CaseSimulationVisuals from "@/components/chat/CaseSimulationVisuals";
+import MessageActions from "@/components/chat/MessageActions";
+import FollowUpSuggestions from "@/components/chat/FollowUpSuggestions";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -20,11 +22,13 @@ interface Message {
 
 const suggestedPrompts = [
   { icon: Gavel, text: "What are my fundamental rights under the constitution?" },
-  { icon: FileText, text: "Explain freedom of speech protections in my constitution" },
+  { icon: FileText, text: "Analyze this employment contract for risks and loopholes" },
   { icon: BookOpen, text: "What amendments protect property rights?" },
-  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy with confidence assessment" },
-  { icon: BookMarked, text: "Simulate a court case about wrongful termination and provide confidence rating" },
-  { icon: AlertTriangle, text: "What are my rights if I am arrested by police? Include case simulation" },
+  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy" },
+  { icon: BookMarked, text: "Simulate a court case about wrongful termination" },
+  { icon: AlertTriangle, text: "What are my rights if I am arrested by police?" },
+  { icon: FilePlus, text: "Draft a legal demand letter for breach of contract" },
+  { icon: Scale, text: "Predict the outcome of my employment dispute case" },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prolaw-chat`;
@@ -153,6 +157,18 @@ const ChatPage = () => {
     }
   };
 
+  const retryLastMessage = () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    if (!lastUserMsg) return;
+    // Remove last assistant message
+    setMessages(prev => {
+      const idx = prev.length - 1;
+      if (prev[idx]?.role === "assistant") return prev.slice(0, idx);
+      return prev;
+    });
+    sendMessage(lastUserMsg.content);
+  };
+
   const toggleRecording = async () => {
     if (isRecording) {
       mediaRecorderRef.current?.stop();
@@ -187,7 +203,7 @@ const ChatPage = () => {
     const reader = new FileReader();
     reader.onload = () => {
       const content = reader.result as string;
-      sendMessage(`[Uploaded file: ${file.name}]\n\nAnalyze this document under ${selectedCountry?.constitutionName}. Provide confidence assessment and case simulation:\n\n${content.slice(0, 3000)}`);
+      sendMessage(`[Uploaded file: ${file.name}]\n\nAnalyze this document under ${selectedCountry?.constitutionName}. Provide clause-by-clause analysis, risk assessment, and recommendations:\n\n${content.slice(0, 5000)}`);
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -213,6 +229,8 @@ const ChatPage = () => {
     : messages;
 
   if (!selectedCountry || !selectedLanguage) return null;
+
+  const currentMode = agentModes.find(m => m.id === agentMode);
 
   return (
     <div className="h-screen flex flex-col">
@@ -250,10 +268,10 @@ const ChatPage = () => {
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
               <h3 className="text-lg font-serif font-bold text-foreground">ProLAW Ready</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                <span className="text-primary">{agentModes.find(m => m.id === agentMode)?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
+                <span className="text-primary">{currentMode?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                {selectedLanguage.name} • 📊 Risk Scoring • ⚖️ Case Simulation • 🔮 Outcome Predictions • ⏱️ Timeline Visualization
+                {selectedLanguage.name} • 📊 Risk Scoring • ⚖️ Case Simulation • 🔮 Predictions • ⏱️ Timeline • 📄 Document Drafting
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
@@ -266,34 +284,48 @@ const ChatPage = () => {
             </div>
           </div>
         ) : (
-          filteredMessages.map((msg) => (
-            <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "glass-panel rounded-bl-md"}`}>
-                {msg.role === "assistant" ? (
-                  <>
-                    <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
-                      <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "")}</ReactMarkdown>
-                    </div>
-                    <CaseSimulationVisuals content={msg.content} />
-                  </>
-                ) : (
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                )}
-                <p className={`text-[10px] mt-2 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-            </motion.div>
-          ))
+          <>
+            {filteredMessages.map((msg, idx) => (
+              <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-md" : "glass-panel rounded-bl-md"}`}>
+                  {msg.role === "assistant" ? (
+                    <>
+                      <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
+                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "")}</ReactMarkdown>
+                      </div>
+                      <CaseSimulationVisuals content={msg.content} />
+                      <MessageActions
+                        content={msg.content}
+                        onRetry={idx === filteredMessages.length - 1 ? retryLastMessage : undefined}
+                      />
+                    </>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                  <p className={`text-[10px] mt-2 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                    {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Follow-up suggestions after last assistant message */}
+            {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (
+              <FollowUpSuggestions agentMode={agentMode} onSelect={sendMessage} />
+            )}
+          </>
         )}
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
             <div className="glass-panel rounded-2xl rounded-bl-md px-4 py-3">
-              <div className="flex gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span className="text-xs text-muted-foreground">{currentMode?.label} analyzing...</span>
               </div>
             </div>
           </motion.div>

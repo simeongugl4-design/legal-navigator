@@ -42,7 +42,7 @@ const DashboardPage = () => {
     if (error) {
       toast({ title: "Error", description: "Failed to load consultations", variant: "destructive" });
     } else {
-      setConsultations(data || []);
+      setConsultations((data || []).map(d => ({ ...d, messages: Array.isArray(d.messages) ? d.messages : [] })));
     }
     setLoading(false);
   };

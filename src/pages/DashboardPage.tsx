@@ -19,7 +19,7 @@ interface Consultation {
   summary: string | null;
   created_at: string;
   updated_at: string;
-  messages: any[];
+  messages: unknown[];
 }
 
 const DashboardPage = () => {

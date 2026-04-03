@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle, FilePlus } from "lucide-react";
+import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle, FilePlus, Save } from "lucide-react";
 import CaseSimulationVisuals from "@/components/chat/CaseSimulationVisuals";
 import MessageActions from "@/components/chat/MessageActions";
 import FollowUpSuggestions from "@/components/chat/FollowUpSuggestions";
 import { useAppStore } from "@/store/appStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
 import AgentModeSelector from "@/components/chat/AgentModeSelector";
@@ -35,7 +37,9 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prolaw-chat`
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { selectedCountry, selectedLanguage, reset } = useAppStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -44,16 +48,84 @@ const ChatPage = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [agentMode, setAgentMode] = useState("legal-advisor");
+  const [consultationId, setConsultationId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
+  // Load existing consultation if ID provided
   useEffect(() => {
-    if (!selectedCountry || !selectedLanguage) navigate("/");
-  }, [selectedCountry, selectedLanguage, navigate]);
+    const id = searchParams.get("consultation");
+    if (id) {
+      loadConsultation(id);
+    }
+  }, [searchParams]);
+
+  const loadConsultation = async (id: string) => {
+    const { data, error } = await supabase
+      .from("consultations")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!error && data) {
+      setConsultationId(id);
+      setAgentMode(data.agent_mode);
+      const msgs = Array.isArray(data.messages) ? data.messages : [];
+      setMessages(msgs.map((m: any) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+      })));
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedCountry || !selectedLanguage) {
+      if (!searchParams.get("consultation")) navigate("/");
+    }
+  }, [selectedCountry, selectedLanguage, navigate, searchParams]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-save consultation
+  const saveConsultation = useCallback(async () => {
+    if (!user || messages.length === 0 || !selectedCountry || !selectedLanguage) return;
+    setIsSaving(true);
+
+    // Extract title from first user message
+    const firstUserMsg = messages.find(m => m.role === "user");
+    const title = firstUserMsg ? firstUserMsg.content.slice(0, 80) : "Untitled";
+
+    // Extract risk/confidence from last assistant message
+    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
+    const riskMatch = lastAssistant?.content.match(/RISK_SCORE:\s*(\d+)/);
+    const confMatch = lastAssistant?.content.match(/CONFIDENCE:\s*(\d+)/);
+
+    const record = {
+      user_id: user.id,
+      title,
+      country: selectedCountry.name,
+      language: selectedLanguage.name,
+      constitution: selectedCountry.constitutionName,
+      agent_mode: agentMode,
+      messages: messages.map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp.toISOString() })),
+      risk_score: riskMatch ? parseInt(riskMatch[1]) : null,
+      confidence: confMatch ? parseInt(confMatch[1]) : null,
+      summary: lastAssistant?.content.slice(0, 200) || null,
+    };
+
+    if (consultationId) {
+      await supabase.from("consultations").update(record).eq("id", consultationId);
+    } else {
+      const { data } = await supabase.from("consultations").insert(record).select("id").single();
+      if (data) setConsultationId(data.id);
+    }
+
+    setIsSaving(false);
+    toast({ title: "Saved", description: "Consultation saved to your case history." });
+  }, [user, messages, selectedCountry, selectedLanguage, agentMode, consultationId, toast]);
 
   const streamChat = useCallback(async (allMessages: { role: string; content: string }[]) => {
     const resp = await fetch(CHAT_URL, {
@@ -160,7 +232,6 @@ const ChatPage = () => {
   const retryLastMessage = () => {
     const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
     if (!lastUserMsg) return;
-    // Remove last assistant message
     setMessages(prev => {
       const idx = prev.length - 1;
       if (prev[idx]?.role === "assistant") return prev.slice(0, idx);
@@ -243,11 +314,32 @@ const ChatPage = () => {
         onToggleSearch={() => setShowSearch(!showSearch)}
         onExport={exportChat}
         onShare={handleShare}
-        onReset={() => setMessages([])}
+        onReset={() => { setMessages([]); setConsultationId(null); }}
         onBack={() => { reset(); navigate("/"); }}
       />
 
-      <AgentModeSelector activeMode={agentMode} onSelect={setAgentMode} />
+      {/* Agent mode + save button row */}
+      <div className="flex items-center gap-2 px-2">
+        <div className="flex-1 overflow-x-auto">
+          <AgentModeSelector activeMode={agentMode} onSelect={setAgentMode} />
+        </div>
+        <div className="flex items-center gap-1 shrink-0 pr-2">
+          <button
+            onClick={saveConsultation}
+            disabled={isSaving || messages.length === 0}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-40 transition-colors"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+          >
+            History
+          </button>
+        </div>
+      </div>
 
       {/* Search bar */}
       <AnimatePresence>
@@ -291,7 +383,7 @@ const ChatPage = () => {
                   {msg.role === "assistant" ? (
                     <>
                       <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
-                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "")}</ReactMarkdown>
+                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "").replace(/STRENGTH_ANALYSIS:\n([\s\S]*?)(?=\n\n|WEAKNESS_|$)/g, "").replace(/COST_ESTIMATE:\n([\s\S]*?)(?=\n\n|$)/g, "")}</ReactMarkdown>
                       </div>
                       <CaseSimulationVisuals content={msg.content} />
                       <MessageActions
@@ -309,7 +401,6 @@ const ChatPage = () => {
               </motion.div>
             ))}
 
-            {/* Follow-up suggestions after last assistant message */}
             {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && (
               <FollowUpSuggestions agentMode={agentMode} onSelect={sendMessage} />
             )}

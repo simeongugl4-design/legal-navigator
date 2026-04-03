@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Globe, Languages, ArrowRight, Scale } from "lucide-react";
+import { Search, Globe, Languages, ArrowRight, Scale, History, LogOut } from "lucide-react";
 import { countries } from "@/data/countries";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
 
 const OnboardingPage = () => {

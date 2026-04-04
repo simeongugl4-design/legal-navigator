@@ -81,9 +81,6 @@ const DashboardPage = () => {
         <button onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
           <Plus className="w-3 h-3" /> New Chat
         </button>
-        <button onClick={signOut} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground" title="Sign out">
-          <LogOut className="w-4 h-4" />
-        </button>
       </header>
 
       <div className="max-w-4xl mx-auto p-4 space-y-6">

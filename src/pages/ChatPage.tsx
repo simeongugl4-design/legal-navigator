@@ -125,7 +125,7 @@ const ChatPage = () => {
 
     setIsSaving(false);
     toast({ title: "Saved", description: "Consultation saved to your case history." });
-  }, [user, messages, selectedCountry, selectedLanguage, agentMode, consultationId, toast]);
+  }, [messages, selectedCountry, selectedLanguage, agentMode, consultationId, toast]);
 
   const streamChat = useCallback(async (allMessages: { role: string; content: string }[]) => {
     const resp = await fetch(CHAT_URL, {

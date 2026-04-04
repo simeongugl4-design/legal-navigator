@@ -104,7 +104,7 @@ const ChatPage = () => {
     const confMatch = lastAssistant?.content.match(/CONFIDENCE:\s*(\d+)/);
 
     const record = {
-      user_id: user.id,
+      user_id: "anonymous",
       title,
       country: selectedCountry.name,
       language: selectedLanguage.name,

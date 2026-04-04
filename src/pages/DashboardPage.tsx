@@ -23,7 +23,6 @@ interface Consultation {
 }
 
 const DashboardPage = () => {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [consultations, setConsultations] = useState<Consultation[]>([]);

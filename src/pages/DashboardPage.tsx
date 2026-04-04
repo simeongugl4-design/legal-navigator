@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Scale, Clock, Trash2, ArrowRight, LogOut, Plus, BarChart3, Shield, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";

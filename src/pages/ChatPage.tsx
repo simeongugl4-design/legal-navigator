@@ -91,7 +91,7 @@ const ChatPage = () => {
 
   // Auto-save consultation
   const saveConsultation = useCallback(async () => {
-    if (!user || messages.length === 0 || !selectedCountry || !selectedLanguage) return;
+    if (messages.length === 0 || !selectedCountry || !selectedLanguage) return;
     setIsSaving(true);
 
     // Extract title from first user message

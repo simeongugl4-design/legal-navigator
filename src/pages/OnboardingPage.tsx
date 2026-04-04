@@ -40,14 +40,11 @@ const OnboardingPage = () => {
         </div>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground">ProLAW</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Welcome, {user?.email?.split("@")[0]}</p>
+          <p className="text-muted-foreground mt-1 text-sm">AI-Powered Legal Intelligence</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <History className="w-3 h-3" /> Case History
-          </button>
-          <button onClick={signOut} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-            <LogOut className="w-3 h-3" /> Sign Out
           </button>
         </div>
 

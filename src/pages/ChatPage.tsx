@@ -383,7 +383,7 @@ const ChatPage = () => {
                   {msg.role === "assistant" ? (
                     <>
                       <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
-                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|$)/g, "").replace(/STRENGTH_ANALYSIS:\n([\s\S]*?)(?=\n\n|WEAKNESS_|$)/g, "").replace(/COST_ESTIMATE:\n([\s\S]*?)(?=\n\n|$)/g, "")}</ReactMarkdown>
+                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/STRENGTH_ANALYSIS:\n([\s\S]*?)(?=\n\n|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/COST_ESTIMATE:\n([\s\S]*?)(?=\n\n|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/SETTLEMENT_RANGE:\n([\s\S]*?)(?=\n\n|JUDGE_FACTORS:|$)/g, "").replace(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|$)/g, "")}</ReactMarkdown>
                       </div>
                       <CaseSimulationVisuals content={msg.content} />
                       <MessageActions

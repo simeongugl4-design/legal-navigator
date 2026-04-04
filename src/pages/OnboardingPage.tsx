@@ -1,15 +1,13 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Globe, Languages, ArrowRight, Scale, History, LogOut } from "lucide-react";
+import { Search, Globe, Languages, ArrowRight, Scale, History } from "lucide-react";
 import { countries } from "@/data/countries";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
   const { selectedCountry, selectedLanguage, setCountry, setLanguage } = useAppStore();
   const [countrySearch, setCountrySearch] = useState("");
   const [step, setStep] = useState<"country" | "language">("country");
@@ -42,14 +40,11 @@ const OnboardingPage = () => {
         </div>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground">ProLAW</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Welcome, {user?.email?.split("@")[0]}</p>
+          <p className="text-muted-foreground mt-1 text-sm">AI-Powered Legal Intelligence</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
             <History className="w-3 h-3" /> Case History
-          </button>
-          <button onClick={signOut} className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-            <LogOut className="w-3 h-3" /> Sign Out
           </button>
         </div>
 

@@ -68,6 +68,8 @@ CRITICAL FORMATTING RULES (MUST FOLLOW — the UI parses these to render visual 
 - ALWAYS include a "CASE_TIMELINE:" section followed by lines formatted as "Phase|Duration|Description"
 - ALWAYS include a "STRENGTH_ANALYSIS:" section followed by lines formatted as "Factor|Score" (score 0-100) covering factors like Evidence, Legal Basis, Witness Testimony, Procedural Compliance, Public Interest
 - ALWAYS include a "COST_ESTIMATE:" section followed by lines formatted as "Phase|MinCost|MaxCost" (in USD)
+- ALWAYS include a "SETTLEMENT_RANGE:" section followed by lines formatted as "Scenario|LowAmount|HighAmount|LikelyAmount" (in USD)
+- ALWAYS include a "JUDGE_FACTORS:" section followed by lines formatted as "Factor|ImpactScore|Direction" where Direction is "Favorable", "Against", or "Neutral" and ImpactScore is 0-100
 - These markers MUST appear in every response — they power real-time visual dashboards
 
 ⚖️ End every response with: "ProLAW — AI-generated legal intelligence based on ${constitution}. This is not legal advice. Consult a licensed attorney in ${country}."

@@ -8,7 +8,6 @@ import prolawLogo from "@/assets/prolaw-logo.jpeg";
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
   const { selectedCountry, selectedLanguage, setCountry, setLanguage } = useAppStore();
   const [countrySearch, setCountrySearch] = useState("");
   const [step, setStep] = useState<"country" | "language">("country");

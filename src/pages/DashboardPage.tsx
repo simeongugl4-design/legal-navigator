@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Scale, Clock, Trash2, ArrowRight, LogOut, Plus, BarChart3, Shield, TrendingUp } from "lucide-react";
+import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
@@ -23,7 +23,6 @@ interface Consultation {
 }
 
 const DashboardPage = () => {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -77,13 +76,10 @@ const DashboardPage = () => {
         <img src={prolawLogo} alt="ProLAW" className="w-8 h-8 rounded-lg" />
         <div className="flex-1">
           <h2 className="text-sm font-semibold text-foreground">ProLAW Dashboard</h2>
-          <p className="text-[11px] text-muted-foreground">{user?.email}</p>
+          <p className="text-[11px] text-muted-foreground">Case History</p>
         </div>
         <button onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
           <Plus className="w-3 h-3" /> New Chat
-        </button>
-        <button onClick={signOut} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground" title="Sign out">
-          <LogOut className="w-4 h-4" />
         </button>
       </header>
 

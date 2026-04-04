@@ -8,7 +8,7 @@ import { useAppStore } from "@/store/appStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+
 import { supabase } from "@/integrations/supabase/client";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatInput from "@/components/chat/ChatInput";
@@ -39,7 +39,7 @@ const ChatPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  
   const { selectedCountry, selectedLanguage, reset } = useAppStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -91,7 +91,7 @@ const ChatPage = () => {
 
   // Auto-save consultation
   const saveConsultation = useCallback(async () => {
-    if (!user || messages.length === 0 || !selectedCountry || !selectedLanguage) return;
+    if (messages.length === 0 || !selectedCountry || !selectedLanguage) return;
     setIsSaving(true);
 
     // Extract title from first user message
@@ -104,7 +104,7 @@ const ChatPage = () => {
     const confMatch = lastAssistant?.content.match(/CONFIDENCE:\s*(\d+)/);
 
     const record = {
-      user_id: user.id,
+      user_id: "anonymous",
       title,
       country: selectedCountry.name,
       language: selectedLanguage.name,
@@ -125,7 +125,7 @@ const ChatPage = () => {
 
     setIsSaving(false);
     toast({ title: "Saved", description: "Consultation saved to your case history." });
-  }, [user, messages, selectedCountry, selectedLanguage, agentMode, consultationId, toast]);
+  }, [messages, selectedCountry, selectedLanguage, agentMode, consultationId, toast]);
 
   const streamChat = useCallback(async (allMessages: { role: string; content: string }[]) => {
     const resp = await fetch(CHAT_URL, {

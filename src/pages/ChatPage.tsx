@@ -23,14 +23,14 @@ interface Message {
 }
 
 const suggestedPrompts = [
-  { icon: Gavel, text: "What are my fundamental rights under the constitution?" },
-  { icon: FileText, text: "Analyze this employment contract for risks and loopholes" },
-  { icon: BookOpen, text: "What amendments protect property rights?" },
-  { icon: Lightbulb, text: "I have a court case - help me build a defense strategy" },
-  { icon: BookMarked, text: "Simulate a court case about wrongful termination" },
-  { icon: AlertTriangle, text: "What are my rights if I am arrested by police?" },
-  { icon: FilePlus, text: "Draft a legal demand letter for breach of contract" },
-  { icon: Scale, text: "Predict the outcome of my employment dispute case" },
+  { icon: Gavel, text: "I was wrongfully terminated after reporting safety violations — build me a complete legal strategy to win" },
+  { icon: FileText, text: "Analyze this employment contract clause by clause and rewrite all unfair terms" },
+  { icon: Lightbulb, text: "My landlord is illegally evicting me — what are ALL my legal options including emergency relief?" },
+  { icon: BookMarked, text: "I'm being sued for $500K breach of contract — build my defense with 3 different strategies" },
+  { icon: AlertTriangle, text: "My business partner embezzled company funds — what legal actions can I take immediately?" },
+  { icon: FilePlus, text: "Draft a cease and desist letter for intellectual property infringement" },
+  { icon: Scale, text: "Predict outcome of my discrimination case and tell me when to settle vs fight" },
+  { icon: BookOpen, text: "I was injured at work and my employer denies responsibility — solve this case for me" },
 ];
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/prolaw-chat`;

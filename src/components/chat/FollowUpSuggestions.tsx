@@ -7,11 +7,12 @@ interface FollowUpSuggestionsProps {
 
 const suggestionsByMode: Record<string, string[]> = {
   "legal-advisor": [
-    "Give me 3 strategies to win this case",
-    "What would opposing counsel argue?",
-    "Draft an immediate action plan",
-    "Identify the silver bullet argument",
-    "What creative legal solutions exist?",
+    "Activate all parallel tracks (civil + criminal + regulatory)",
+    "Build the asset recovery & freeze roadmap",
+    "Draft the 72-hour war room checklist",
+    "Calculate maximum recovery (treble + punitive + fees)",
+    "Identify the silver bullet kill-shot argument",
+    "Generate the pre-suit demand letter",
   ],
   "contract-analyzer": [
     "Rewrite all risky clauses",

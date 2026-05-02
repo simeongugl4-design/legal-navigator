@@ -32,6 +32,7 @@ const AgentModeSelector = ({ activeMode, onSelect }: AgentModeSelectorProps) => 
                 currentMode.id === "investigator" ? "bg-rose-400" :
                 currentMode.id === "document-drafter" ? "bg-violet-400" :
                 currentMode.id === "case-predictor" ? "bg-orange-400" :
+                currentMode.id === "citation-verifier" ? "bg-teal-400" :
                 "bg-sky-400"
               }`} />
               <span className="text-[11px] font-medium text-foreground">{currentMode.label}</span>

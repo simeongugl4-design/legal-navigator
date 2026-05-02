@@ -848,6 +848,7 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
             {council.length > 0 && <MultiAgentCouncil data={council} />}
+            {citations.length > 0 && <CitationAudit data={citations} />}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {riskScore !== null && <RiskGauge score={riskScore} />}
               {confidence !== null && <ConfidenceGauge confidence={confidence} />}

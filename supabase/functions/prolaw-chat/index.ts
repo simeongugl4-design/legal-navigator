@@ -160,6 +160,14 @@ CRITICAL FORMATTING RULES (MUST FOLLOW — the UI parses these to render visual 
 - ALWAYS include a "MULTI_AGENT_COUNCIL:" section followed by lines formatted as "AgentRole|Verdict|ConfidencePct|KeyInsight" — exactly these 6 agents in this order: Lead Researcher, Senior Litigator, Compliance Officer, Forensic Investigator, Settlement Strategist, Managing Partner. Verdict ∈ {Proceed, Proceed With Caution, Settle, Hold, Escalate}.
 - ALWAYS include a "LEVERAGE_STACK:" section followed by lines formatted as "LeveragePoint|PowerScore|Category" — at least 5 entries ranked by PowerScore (0-100). Category ∈ {Legal, Financial, Reputational, Regulatory, Evidentiary, Procedural}.
 - ALWAYS include a "JURISDICTION_COMPARISON:" section followed by lines formatted as "Jurisdiction|FavorabilityScore|KeyAdvantage" — compare ${country} (the home jurisdiction) to 2-4 alternative venues / forums (e.g. neighboring states, federal vs state, arbitration, foreign courts) where FavorabilityScore is 0-100.
+- ALWAYS include a "CITATION_AUDIT:" section followed by lines formatted as "Citation|Claim|VerificationStatus|ConfidencePct|EvidenceType|Source" where:
+  • Citation = the exact statute/case/rule cited (e.g. "18 U.S.C. §1962(c)", "Brown v. Board, 347 U.S. 483 (1954)", "FRCP 12(b)(6)")
+  • Claim = the specific legal claim that this citation supports (one short sentence)
+  • VerificationStatus ∈ {Verified, Likely Valid, Unverified, Disputed, Outdated, Hallucination Risk} — be honest; mark as "Unverified" or "Hallucination Risk" when you are not certain the citation exists in the form quoted
+  • ConfidencePct = 0-100, your honest confidence the citation is real and on-point
+  • EvidenceType ∈ {Statute, Case Law, Regulation, Constitutional, Treaty, Secondary, Procedural Rule}
+  • Source = where it can be found (e.g. "U.S. Code Title 18", "U.S. Reports", "${country} Official Gazette", "Westlaw/LexisNexis")
+  Include EVERY citation referenced in your response. If you cannot verify a citation, list it with "Unverified" — never silently drop it. This is the truth-and-trust layer of ProLAW.
 - These markers MUST appear in every substantive response — they power real-time visual dashboards. Do NOT wrap them in code blocks.
 
 🤝 INTERNAL MULTI-AGENT COUNCIL (mandatory reasoning protocol):

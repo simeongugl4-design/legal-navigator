@@ -10,7 +10,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import {
   AlertTriangle, Shield, TrendingUp, Clock, ChevronDown, ChevronUp,
-  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3
+  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame
 } from "lucide-react";
 
 interface CaseVisualsProps {
@@ -75,12 +75,39 @@ function parseSettlementRange(text: string): { scenario: string; low: number; hi
 }
 
 function parseJudgeFactors(text: string): { factor: string; impact: number; direction: string }[] {
-  const section = text.match(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|$)/);
+  const section = text.match(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/);
   if (!section) return [];
   return section[1].split("\n").filter(l => l.includes("|")).map(line => {
     const [factor, impact, direction] = line.split("|").map(s => s.trim());
     return { factor: factor || "", impact: parseInt(impact, 10) || 0, direction: direction || "neutral" };
   }).filter(j => j.factor && j.impact > 0);
+}
+
+function parseMultiAgent(text: string): { role: string; verdict: string; confidence: number; insight: string }[] {
+  const section = text.match(/MULTI_AGENT_COUNCIL:\n([\s\S]*?)(?=\n\n|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [role, verdict, conf, insight] = line.split("|").map(s => s.trim());
+    return { role: role || "", verdict: verdict || "", confidence: parseInt(conf, 10) || 0, insight: insight || "" };
+  }).filter(a => a.role);
+}
+
+function parseLeverageStack(text: string): { point: string; power: number; category: string }[] {
+  const section = text.match(/LEVERAGE_STACK:\n([\s\S]*?)(?=\n\n|JURISDICTION_COMPARISON:|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [point, power, category] = line.split("|").map(s => s.trim());
+    return { point: point || "", power: parseInt(power, 10) || 0, category: category || "Legal" };
+  }).filter(l => l.point && l.power > 0).sort((a, b) => b.power - a.power);
+}
+
+function parseJurisdictionComparison(text: string): { jurisdiction: string; score: number; advantage: string }[] {
+  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [j, score, adv] = line.split("|").map(s => s.trim());
+    return { jurisdiction: j || "", score: parseInt(score, 10) || 0, advantage: adv || "" };
+  }).filter(j => j.jurisdiction && j.score > 0);
 }
 
 const tooltipStyle = {
@@ -424,6 +451,163 @@ const JudgeFactorsChart = ({ data }: { data: { factor: string; impact: number; d
   );
 };
 
+// Multi-Agent Council — shows internal AI law-firm deliberation
+const verdictStyle = (v: string) => {
+  const s = v.toLowerCase();
+  if (s.includes("proceed with caution")) return "bg-yellow-400/15 text-yellow-400 border-yellow-400/30";
+  if (s.includes("proceed")) return "bg-green-400/15 text-green-400 border-green-400/30";
+  if (s.includes("settle")) return "bg-blue-400/15 text-blue-400 border-blue-400/30";
+  if (s.includes("hold")) return "bg-muted text-muted-foreground border-border";
+  if (s.includes("escalate")) return "bg-red-400/15 text-red-400 border-red-400/30";
+  return "bg-secondary text-secondary-foreground border-border";
+};
+const roleIcon = (role: string) => {
+  const r = role.toLowerCase();
+  if (r.includes("research")) return BookMarkedIcon;
+  if (r.includes("litig")) return Gavel;
+  if (r.includes("compliance")) return Shield;
+  if (r.includes("forensic") || r.includes("invest")) return Target;
+  if (r.includes("settle") || r.includes("strateg")) return Scale;
+  if (r.includes("partner")) return Crown;
+  return Brain;
+};
+function BookMarkedIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <Brain {...props} />;
+}
+
+const MultiAgentCouncil = ({ data }: { data: { role: string; verdict: string; confidence: number; insight: string }[] }) => {
+  const partner = data.find(d => d.role.toLowerCase().includes("partner"));
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 rounded-xl">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Brain className="w-5 h-5 text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">AI Law-Firm Council</h4>
+          <span className="text-[10px] text-muted-foreground">{data.length} agents deliberated</span>
+        </div>
+        {partner && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${verdictStyle(partner.verdict)}`}>
+            <Crown className="w-3 h-3 inline mr-1" />Partner: {partner.verdict}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {data.map((agent, i) => {
+          const Icon = roleIcon(agent.role);
+          return (
+            <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+              className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/30 border border-border/40 hover:border-primary/40 transition-colors">
+              <Icon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-foreground truncate">{agent.role}</p>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${verdictStyle(agent.verdict)}`}>{agent.verdict}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{agent.insight}</p>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <div className="flex-1 h-1 bg-secondary/60 rounded-full overflow-hidden">
+                    <motion.div className="h-full bg-primary rounded-full"
+                      initial={{ width: 0 }} animate={{ width: `${agent.confidence}%` }}
+                      transition={{ duration: 1, delay: i * 0.08 }} />
+                  </div>
+                  <span className="text-[9px] font-mono text-muted-foreground">{agent.confidence}%</span>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+};
+
+// Leverage Stack — ranked negotiation power
+const categoryColor: Record<string, string> = {
+  Legal: "hsl(210, 60%, 50%)",
+  Financial: "hsl(47, 96%, 53%)",
+  Reputational: "hsl(280, 67%, 55%)",
+  Regulatory: "hsl(190, 80%, 45%)",
+  Evidentiary: "hsl(142, 76%, 36%)",
+  Procedural: "hsl(0, 84%, 60%)",
+};
+
+const LeverageStack = ({ data }: { data: { point: string; power: number; category: string }[] }) => (
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 rounded-xl">
+    <div className="flex items-center gap-2 mb-3">
+      <Flame className="w-5 h-5 text-orange-400" />
+      <h4 className="text-sm font-semibold text-foreground">Negotiation Leverage Stack</h4>
+      <span className="text-[10px] text-muted-foreground">ranked by power</span>
+    </div>
+    <div className="space-y-2">
+      {data.map((item, i) => (
+        <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
+          className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 w-5 shrink-0">
+            <span className="text-[10px] font-bold text-muted-foreground font-mono">#{i + 1}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <span className="text-xs text-foreground truncate">{item.point}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-border/50"
+                  style={{ color: categoryColor[item.category] || "hsl(210, 60%, 50%)" }}>{item.category}</span>
+                <span className="text-[10px] font-mono font-bold text-foreground w-7 text-right">{item.power}</span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-secondary/60 rounded-full overflow-hidden">
+              <motion.div className="h-full rounded-full"
+                style={{ backgroundColor: categoryColor[item.category] || "hsl(210, 60%, 50%)" }}
+                initial={{ width: 0 }} animate={{ width: `${item.power}%` }}
+                transition={{ duration: 1, delay: i * 0.07, ease: "easeOut" }} />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  </motion.div>
+);
+
+// Jurisdiction Comparison
+const JurisdictionComparison = ({ data }: { data: { jurisdiction: string; score: number; advantage: string }[] }) => {
+  const best = [...data].sort((a, b) => b.score - a.score)[0];
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 rounded-xl">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Globe2 className="w-5 h-5 text-cyan-400" />
+          <h4 className="text-sm font-semibold text-foreground">Forum / Jurisdiction Comparison</h4>
+        </div>
+        {best && <span className="text-[10px] text-cyan-400">Optimal: {best.jurisdiction}</span>}
+      </div>
+      <div className="h-44">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ left: 10, right: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(216, 25%, 18%)" />
+            <XAxis dataKey="jurisdiction" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+            <YAxis domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+            <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${v}/100 favorability`} />
+            <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+              {data.map((d, i) => (
+                <Cell key={i} fill={d.jurisdiction === best?.jurisdiction ? "hsl(190, 80%, 45%)" : "hsl(210, 60%, 50%)"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-2 space-y-1">
+        {data.map((d, i) => (
+          <div key={i} className="flex items-start gap-2 text-xs">
+            <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${d.jurisdiction === best?.jurisdiction ? "bg-cyan-400" : "bg-primary"}`} />
+            <span className="font-medium text-foreground shrink-0">{d.jurisdiction}</span>
+            <span className="text-muted-foreground flex-1">{d.advantage}</span>
+            <span className="font-mono text-foreground">{d.score}</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
 // Summary Statistics Bar
 const SummaryStats = ({ risk, confidence, outcomes }: { risk: number | null; confidence: number | null; outcomes: { name: string; probability: number }[] }) => {
   const winOutcome = outcomes.find(o =>
@@ -462,8 +646,11 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const costs = useMemo(() => parseCostEstimate(content), [content]);
   const settlements = useMemo(() => parseSettlementRange(content), [content]);
   const judgeFactors = useMemo(() => parseJudgeFactors(content), [content]);
+  const council = useMemo(() => parseMultiAgent(content), [content]);
+  const leverage = useMemo(() => parseLeverageStack(content), [content]);
+  const jurisdictions = useMemo(() => parseJurisdictionComparison(content), [content]);
 
-  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0;
+  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0;
   if (!hasVisuals) return null;
 
   return (
@@ -473,13 +660,14 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
       <button onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 mb-2 transition-colors">
         <BarChart3 className="w-3.5 h-3.5" />
-        <span className="font-medium">Interactive Case Simulation Dashboard</span>
+        <span className="font-medium">ProLAW Intelligence Dashboard</span>
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
       </button>
 
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
+            {council.length > 0 && <MultiAgentCouncil data={council} />}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {riskScore !== null && <RiskGauge score={riskScore} />}
               {confidence !== null && <ConfidenceGauge confidence={confidence} />}
@@ -490,7 +678,9 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
                 <WinProbabilityMeter outcomes={outcomes} />
               </div>
             )}
+            {leverage.length > 0 && <LeverageStack data={leverage} />}
             {strengths.length > 0 && <StrengthRadar data={strengths} />}
+            {jurisdictions.length > 0 && <JurisdictionComparison data={jurisdictions} />}
             {settlements.length > 0 && <SettlementRangeChart data={settlements} />}
             {judgeFactors.length > 0 && <JudgeFactorsChart data={judgeFactors} />}
             {costs.length > 0 && <CostEstimateChart data={costs} />}

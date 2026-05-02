@@ -355,16 +355,21 @@ const ChatPage = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-6">
-            <div className="text-center">
+          <div className="flex flex-col items-center justify-center min-h-full gap-6 py-6">
+            <div className="text-center max-w-2xl">
               <Scale className="w-10 h-10 text-primary mx-auto mb-3 animate-pulse-glow" />
-              <h3 className="text-lg font-serif font-bold text-foreground">ProLAW Ready</h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                <span className="text-primary">{currentMode?.label}</span> mode • Connected to <span className="text-primary">{selectedCountry.constitutionName}</span>
+              <h3 className="text-xl font-serif font-bold text-foreground">ProLAW — The Operating System of Law</h3>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed px-2">
+                A next-generation legal intelligence platform that fuses multi-jurisdiction reasoning, autonomous AI agents, and predictive analytics into one billion-dollar legal brain — researcher, litigator, forensic investigator, and managing partner working in parallel.
               </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {selectedLanguage.name} • 📊 Risk Scoring • ⚖️ Case Simulation • 🔮 Predictions • ⏱️ Timeline • 📄 Document Drafting
+              <p className="text-[11px] text-muted-foreground mt-3">
+                <span className="text-primary font-semibold">{currentMode?.label}</span> mode • <span className="text-primary">{selectedCountry.constitutionName}</span> • {selectedLanguage.name}
               </p>
+              <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+                {["🧠 6-Agent Council", "📊 Risk Scoring", "⚖️ Outcome Prediction", "💰 Settlement Math", "🌍 Jurisdiction Compare", "🔥 Leverage Stack", "⏱️ Timeline", "📄 Document Drafting"].map(c => (
+                  <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/60 text-secondary-foreground border border-border/40">{c}</span>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
               {suggestedPrompts.map((prompt, i) => (
@@ -383,7 +388,19 @@ const ChatPage = () => {
                   {msg.role === "assistant" ? (
                     <>
                       <div className="prose prose-sm prose-invert max-w-none text-sm [&_h2]:text-foreground [&_h3]:text-foreground [&_strong]:text-foreground [&_li]:text-secondary-foreground [&_p]:text-secondary-foreground [&_hr]:border-border [&_code]:text-primary [&_a]:text-primary">
-                        <ReactMarkdown>{msg.content.replace(/RISK_SCORE:.*\n?/g, "").replace(/CONFIDENCE:.*\n?/g, "").replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/STRENGTH_ANALYSIS:\n([\s\S]*?)(?=\n\n|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/COST_ESTIMATE:\n([\s\S]*?)(?=\n\n|SETTLEMENT_RANGE:|JUDGE_FACTORS:|$)/g, "").replace(/SETTLEMENT_RANGE:\n([\s\S]*?)(?=\n\n|JUDGE_FACTORS:|$)/g, "").replace(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|$)/g, "")}</ReactMarkdown>
+                        <ReactMarkdown>{msg.content
+                          .replace(/RISK_SCORE:.*\n?/g, "")
+                          .replace(/CONFIDENCE:.*\n?/g, "")
+                          .replace(/OUTCOME_PREDICTIONS:\n([\s\S]*?)(?=\n\n|CASE_TIMELINE:|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/CASE_TIMELINE:\n([\s\S]*?)(?=\n\n##|STRENGTH_ANALYSIS:|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/STRENGTH_ANALYSIS:\n([\s\S]*?)(?=\n\n|COST_ESTIMATE:|SETTLEMENT_RANGE:|JUDGE_FACTORS:|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/COST_ESTIMATE:\n([\s\S]*?)(?=\n\n|SETTLEMENT_RANGE:|JUDGE_FACTORS:|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/SETTLEMENT_RANGE:\n([\s\S]*?)(?=\n\n|JUDGE_FACTORS:|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/MULTI_AGENT_COUNCIL:\n([\s\S]*?)(?=\n\n|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/LEVERAGE_STACK:\n([\s\S]*?)(?=\n\n|JURISDICTION_COMPARISON:|$)/g, "")
+                          .replace(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|$)/g, "")
+                        }</ReactMarkdown>
                       </div>
                       <CaseSimulationVisuals content={msg.content} />
                       <MessageActions
@@ -416,7 +433,7 @@ const ChatPage = () => {
                   <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
                   <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
-                <span className="text-xs text-muted-foreground">{currentMode?.label} analyzing...</span>
+                <span className="text-xs text-muted-foreground">{currentMode?.label} • 6-agent council deliberating...</span>
               </div>
             </div>
           </motion.div>

@@ -646,8 +646,11 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const costs = useMemo(() => parseCostEstimate(content), [content]);
   const settlements = useMemo(() => parseSettlementRange(content), [content]);
   const judgeFactors = useMemo(() => parseJudgeFactors(content), [content]);
+  const council = useMemo(() => parseMultiAgent(content), [content]);
+  const leverage = useMemo(() => parseLeverageStack(content), [content]);
+  const jurisdictions = useMemo(() => parseJurisdictionComparison(content), [content]);
 
-  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0;
+  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0;
   if (!hasVisuals) return null;
 
   return (
@@ -657,13 +660,14 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
       <button onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 mb-2 transition-colors">
         <BarChart3 className="w-3.5 h-3.5" />
-        <span className="font-medium">Interactive Case Simulation Dashboard</span>
+        <span className="font-medium">ProLAW Intelligence Dashboard</span>
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
       </button>
 
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
+            {council.length > 0 && <MultiAgentCouncil data={council} />}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {riskScore !== null && <RiskGauge score={riskScore} />}
               {confidence !== null && <ConfidenceGauge confidence={confidence} />}
@@ -674,7 +678,9 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
                 <WinProbabilityMeter outcomes={outcomes} />
               </div>
             )}
+            {leverage.length > 0 && <LeverageStack data={leverage} />}
             {strengths.length > 0 && <StrengthRadar data={strengths} />}
+            {jurisdictions.length > 0 && <JurisdictionComparison data={jurisdictions} />}
             {settlements.length > 0 && <SettlementRangeChart data={settlements} />}
             {judgeFactors.length > 0 && <JudgeFactorsChart data={judgeFactors} />}
             {costs.length > 0 && <CostEstimateChart data={costs} />}

@@ -10,7 +10,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import {
   AlertTriangle, Shield, TrendingUp, Clock, ChevronDown, ChevronUp,
-  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame
+  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame,
+  BadgeCheck, BookMarked, AlertOctagon, HelpCircle, XCircle, History, ExternalLink
 } from "lucide-react";
 
 interface CaseVisualsProps {
@@ -102,12 +103,38 @@ function parseLeverageStack(text: string): { point: string; power: number; categ
 }
 
 function parseJurisdictionComparison(text: string): { jurisdiction: string; score: number; advantage: string }[] {
-  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|$)/);
+  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|CITATION_AUDIT:|$)/);
   if (!section) return [];
   return section[1].split("\n").filter(l => l.includes("|")).map(line => {
     const [j, score, adv] = line.split("|").map(s => s.trim());
     return { jurisdiction: j || "", score: parseInt(score, 10) || 0, advantage: adv || "" };
   }).filter(j => j.jurisdiction && j.score > 0);
+}
+
+export interface CitationAuditEntry {
+  citation: string;
+  claim: string;
+  status: string;
+  confidence: number;
+  evidenceType: string;
+  source: string;
+}
+
+function parseCitationAudit(text: string): CitationAuditEntry[] {
+  const section = text.match(/CITATION_AUDIT:\n([\s\S]*?)(?=\n\n##|\n\nEnd with|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const parts = line.split("|").map(s => s.trim());
+    const [citation, claim, status, conf, evidenceType, source] = parts;
+    return {
+      citation: citation || "",
+      claim: claim || "",
+      status: status || "Unverified",
+      confidence: parseInt(conf, 10) || 0,
+      evidenceType: evidenceType || "Statute",
+      source: source || "",
+    };
+  }).filter(c => c.citation && !c.citation.startsWith("[") && !c.citation.toLowerCase().startsWith("citation"));
 }
 
 const tooltipStyle = {
@@ -608,6 +635,158 @@ const JurisdictionComparison = ({ data }: { data: { jurisdiction: string; score:
   );
 };
 
+// Citation Audit — verifies every legal citation
+const statusMeta = (status: string): { color: string; bg: string; border: string; Icon: React.ElementType; label: string } => {
+  const s = status.toLowerCase();
+  if (s.includes("verified") && !s.includes("un")) return { color: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/40", Icon: BadgeCheck, label: "Verified" };
+  if (s.includes("likely")) return { color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/40", Icon: BadgeCheck, label: "Likely Valid" };
+  if (s.includes("hallucin")) return { color: "text-red-500", bg: "bg-red-500/15", border: "border-red-500/50", Icon: AlertOctagon, label: "Hallucination Risk" };
+  if (s.includes("disput")) return { color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/40", Icon: XCircle, label: "Disputed" };
+  if (s.includes("outdat")) return { color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/40", Icon: History, label: "Outdated" };
+  return { color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/40", Icon: HelpCircle, label: "Unverified" };
+};
+
+const evidenceTypeColor: Record<string, string> = {
+  "Case Law": "hsl(280, 67%, 55%)",
+  "Statute": "hsl(210, 60%, 50%)",
+  "Regulation": "hsl(190, 80%, 45%)",
+  "Constitutional": "hsl(47, 96%, 53%)",
+  "Treaty": "hsl(142, 76%, 36%)",
+  "Secondary": "hsl(215, 15%, 55%)",
+  "Procedural Rule": "hsl(0, 84%, 60%)",
+};
+
+const verificationLink = (citation: string, source: string): string => {
+  const q = encodeURIComponent(`${citation} ${source}`.trim());
+  return `https://scholar.google.com/scholar?q=${q}`;
+};
+
+const CitationAudit = ({ data }: { data: CitationAuditEntry[] }) => {
+  const [filter, setFilter] = useState<string>("all");
+  const counts = useMemo(() => {
+    const c = { verified: 0, likely: 0, unverified: 0, disputed: 0, outdated: 0, hallucination: 0 };
+    data.forEach(d => {
+      const s = d.status.toLowerCase();
+      if (s.includes("hallucin")) c.hallucination++;
+      else if (s.includes("disput")) c.disputed++;
+      else if (s.includes("outdat")) c.outdated++;
+      else if (s.includes("likely")) c.likely++;
+      else if (s.includes("verified")) c.verified++;
+      else c.unverified++;
+    });
+    return c;
+  }, [data]);
+
+  const trustScore = useMemo(() => {
+    if (data.length === 0) return 0;
+    const sum = data.reduce((acc, d) => {
+      const s = d.status.toLowerCase();
+      const weight = s.includes("hallucin") ? 0 : s.includes("disput") ? 0.2 : s.includes("outdat") ? 0.4 : s.includes("unverified") ? 0.5 : s.includes("likely") ? 0.85 : 1;
+      return acc + (d.confidence * weight);
+    }, 0);
+    return Math.round(sum / data.length);
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return data;
+    return data.filter(d => {
+      const s = d.status.toLowerCase();
+      if (filter === "flagged") return s.includes("hallucin") || s.includes("disput") || s.includes("outdat") || s.includes("unverified");
+      if (filter === "verified") return s.includes("verified") || s.includes("likely");
+      return true;
+    });
+  }, [data, filter]);
+
+  const trustColor = trustScore >= 75 ? "text-green-400" : trustScore >= 50 ? "text-yellow-400" : "text-red-400";
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 rounded-xl">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <BadgeCheck className="w-5 h-5 text-teal-400" />
+          <h4 className="text-sm font-semibold text-foreground">Citation Audit</h4>
+          <span className="text-[10px] text-muted-foreground">{data.length} authorities checked</span>
+        </div>
+        <div className={`text-xs font-bold ${trustColor}`}>Trust Score: {trustScore}/100</div>
+      </div>
+
+      {/* Status summary chips */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {counts.verified > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-400/10 text-green-400 border border-green-400/30 flex items-center gap-1"><BadgeCheck className="w-3 h-3" />{counts.verified} verified</span>}
+        {counts.likely > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/30">{counts.likely} likely</span>}
+        {counts.unverified > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 flex items-center gap-1"><HelpCircle className="w-3 h-3" />{counts.unverified} unverified</span>}
+        {counts.outdated > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/30 flex items-center gap-1"><History className="w-3 h-3" />{counts.outdated} outdated</span>}
+        {counts.disputed > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-400/10 text-orange-400 border border-orange-400/30 flex items-center gap-1"><XCircle className="w-3 h-3" />{counts.disputed} disputed</span>}
+        {counts.hallucination > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-500 border border-red-500/40 flex items-center gap-1 animate-pulse"><AlertOctagon className="w-3 h-3" />{counts.hallucination} hallucination risk</span>}
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 mb-3 border-b border-border/40">
+        {[
+          { id: "all", label: `All (${data.length})` },
+          { id: "verified", label: `✓ Trusted (${counts.verified + counts.likely})` },
+          { id: "flagged", label: `⚠ Flagged (${counts.unverified + counts.outdated + counts.disputed + counts.hallucination})` },
+        ].map(t => (
+          <button key={t.id} onClick={() => setFilter(t.id)}
+            className={`text-[10px] px-2.5 py-1 rounded-t-md transition-colors ${filter === t.id ? "bg-secondary/60 text-foreground border-b-2 border-teal-400" : "text-muted-foreground hover:text-foreground"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Citation cards */}
+      <div className="space-y-2 max-h-[420px] overflow-y-auto scrollbar-thin pr-1">
+        {filtered.map((c, i) => {
+          const meta = statusMeta(c.status);
+          const evidenceColor = evidenceTypeColor[c.evidenceType] || "hsl(210, 60%, 50%)";
+          return (
+            <motion.div key={i} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className={`p-2.5 rounded-lg border ${meta.border} ${meta.bg}`}>
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                  <meta.Icon className={`w-3.5 h-3.5 ${meta.color} mt-0.5 shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-mono font-semibold text-foreground break-words">{c.citation}</p>
+                    {c.claim && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Supports: <span className="text-secondary-foreground">{c.claim}</span></p>}
+                  </div>
+                </div>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${meta.color} ${meta.bg} border ${meta.border} shrink-0 whitespace-nowrap`}>
+                  {meta.label}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-border/50" style={{ color: evidenceColor }}>
+                    {c.evidenceType}
+                  </span>
+                  {c.source && <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">📖 {c.source}</span>}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
+                    <div className="w-12 h-1 bg-secondary/60 rounded-full overflow-hidden">
+                      <motion.div className="h-full rounded-full" style={{ backgroundColor: evidenceColor }}
+                        initial={{ width: 0 }} animate={{ width: `${c.confidence}%` }} transition={{ duration: 0.8, delay: i * 0.04 }} />
+                    </div>
+                    <span className="text-[9px] font-mono text-foreground">{c.confidence}%</span>
+                  </div>
+                  <a href={verificationLink(c.citation, c.source)} target="_blank" rel="noopener noreferrer"
+                    className="text-[9px] px-1.5 py-0.5 rounded-full bg-secondary/60 text-secondary-foreground hover:bg-primary/20 hover:text-primary transition-colors flex items-center gap-1"
+                    title="Verify on Google Scholar">
+                    Verify <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">No citations match this filter.</p>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 // Summary Statistics Bar
 const SummaryStats = ({ risk, confidence, outcomes }: { risk: number | null; confidence: number | null; outcomes: { name: string; probability: number }[] }) => {
   const winOutcome = outcomes.find(o =>
@@ -649,8 +828,9 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const council = useMemo(() => parseMultiAgent(content), [content]);
   const leverage = useMemo(() => parseLeverageStack(content), [content]);
   const jurisdictions = useMemo(() => parseJurisdictionComparison(content), [content]);
+  const citations = useMemo(() => parseCitationAudit(content), [content]);
 
-  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0;
+  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0 || citations.length > 0;
   if (!hasVisuals) return null;
 
   return (
@@ -668,6 +848,7 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
             {council.length > 0 && <MultiAgentCouncil data={council} />}
+            {citations.length > 0 && <CitationAudit data={citations} />}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {riskScore !== null && <RiskGauge score={riskScore} />}
               {confidence !== null && <ConfidenceGauge confidence={confidence} />}

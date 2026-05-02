@@ -56,6 +56,14 @@ const suggestionsByMode: Record<string, string[]> = {
     "Identify wild card factors",
     "Compare with similar case outcomes",
   ],
+  "citation-verifier": [
+    "Verify every citation in the previous answer",
+    "Flag any citations that look hallucinated",
+    "Pin each legal claim to its source",
+    "Find counter-authority that weakens the case",
+    "Show me the verified authority stack only",
+    "Check if any cited case has been overturned",
+  ],
   "constitution-browse": [
     "Show fundamental rights",
     "Explain due process protections",

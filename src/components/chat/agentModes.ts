@@ -1,4 +1,4 @@
-import { Scale, FileText, Swords, ShieldCheck, Search, BookOpen, FilePlus, TrendingUp } from "lucide-react";
+import { Scale, FileText, Swords, ShieldCheck, Search, BookOpen, FilePlus, TrendingUp, BadgeCheck } from "lucide-react";
 
 export interface AgentMode {
   id: string;
@@ -16,5 +16,7 @@ export const agentModes: AgentMode[] = [
   { id: "investigator", label: "Investigator", icon: Search, description: "Evidence analysis & fact patterns", color: "text-rose-400" },
   { id: "document-drafter", label: "Document Drafter", icon: FilePlus, description: "Generate legal documents & filings", color: "text-violet-400" },
   { id: "case-predictor", label: "Case Predictor", icon: TrendingUp, description: "Deep case outcome prediction & strategy", color: "text-orange-400" },
+  { id: "citation-verifier", label: "Citation Verifier", icon: BadgeCheck, description: "Validate every law citation & evidence link", color: "text-teal-400" },
   { id: "constitution-browse", label: "Constitution", icon: BookOpen, description: "Browse constitutional articles", color: "text-sky-400" },
 ];
+

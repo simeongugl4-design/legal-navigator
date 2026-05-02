@@ -828,8 +828,9 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const council = useMemo(() => parseMultiAgent(content), [content]);
   const leverage = useMemo(() => parseLeverageStack(content), [content]);
   const jurisdictions = useMemo(() => parseJurisdictionComparison(content), [content]);
+  const citations = useMemo(() => parseCitationAudit(content), [content]);
 
-  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0;
+  const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0 || citations.length > 0;
   if (!hasVisuals) return null;
 
   return (

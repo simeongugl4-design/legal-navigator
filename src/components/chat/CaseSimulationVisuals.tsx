@@ -103,12 +103,38 @@ function parseLeverageStack(text: string): { point: string; power: number; categ
 }
 
 function parseJurisdictionComparison(text: string): { jurisdiction: string; score: number; advantage: string }[] {
-  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|$)/);
+  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|CITATION_AUDIT:|$)/);
   if (!section) return [];
   return section[1].split("\n").filter(l => l.includes("|")).map(line => {
     const [j, score, adv] = line.split("|").map(s => s.trim());
     return { jurisdiction: j || "", score: parseInt(score, 10) || 0, advantage: adv || "" };
   }).filter(j => j.jurisdiction && j.score > 0);
+}
+
+export interface CitationAuditEntry {
+  citation: string;
+  claim: string;
+  status: string;
+  confidence: number;
+  evidenceType: string;
+  source: string;
+}
+
+function parseCitationAudit(text: string): CitationAuditEntry[] {
+  const section = text.match(/CITATION_AUDIT:\n([\s\S]*?)(?=\n\n##|\n\nEnd with|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const parts = line.split("|").map(s => s.trim());
+    const [citation, claim, status, conf, evidenceType, source] = parts;
+    return {
+      citation: citation || "",
+      claim: claim || "",
+      status: status || "Unverified",
+      confidence: parseInt(conf, 10) || 0,
+      evidenceType: evidenceType || "Statute",
+      source: source || "",
+    };
+  }).filter(c => c.citation && !c.citation.startsWith("[") && !c.citation.toLowerCase().startsWith("citation"));
 }
 
 const tooltipStyle = {

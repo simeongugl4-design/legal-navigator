@@ -10,7 +10,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import {
   AlertTriangle, Shield, TrendingUp, Clock, ChevronDown, ChevronUp,
-  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3
+  Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame
 } from "lucide-react";
 
 interface CaseVisualsProps {

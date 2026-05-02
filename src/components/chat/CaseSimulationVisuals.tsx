@@ -75,12 +75,39 @@ function parseSettlementRange(text: string): { scenario: string; low: number; hi
 }
 
 function parseJudgeFactors(text: string): { factor: string; impact: number; direction: string }[] {
-  const section = text.match(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|$)/);
+  const section = text.match(/JUDGE_FACTORS:\n([\s\S]*?)(?=\n\n|MULTI_AGENT_COUNCIL:|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/);
   if (!section) return [];
   return section[1].split("\n").filter(l => l.includes("|")).map(line => {
     const [factor, impact, direction] = line.split("|").map(s => s.trim());
     return { factor: factor || "", impact: parseInt(impact, 10) || 0, direction: direction || "neutral" };
   }).filter(j => j.factor && j.impact > 0);
+}
+
+function parseMultiAgent(text: string): { role: string; verdict: string; confidence: number; insight: string }[] {
+  const section = text.match(/MULTI_AGENT_COUNCIL:\n([\s\S]*?)(?=\n\n|LEVERAGE_STACK:|JURISDICTION_COMPARISON:|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [role, verdict, conf, insight] = line.split("|").map(s => s.trim());
+    return { role: role || "", verdict: verdict || "", confidence: parseInt(conf, 10) || 0, insight: insight || "" };
+  }).filter(a => a.role);
+}
+
+function parseLeverageStack(text: string): { point: string; power: number; category: string }[] {
+  const section = text.match(/LEVERAGE_STACK:\n([\s\S]*?)(?=\n\n|JURISDICTION_COMPARISON:|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [point, power, category] = line.split("|").map(s => s.trim());
+    return { point: point || "", power: parseInt(power, 10) || 0, category: category || "Legal" };
+  }).filter(l => l.point && l.power > 0).sort((a, b) => b.power - a.power);
+}
+
+function parseJurisdictionComparison(text: string): { jurisdiction: string; score: number; advantage: string }[] {
+  const section = text.match(/JURISDICTION_COMPARISON:\n([\s\S]*?)(?=\n\n|$)/);
+  if (!section) return [];
+  return section[1].split("\n").filter(l => l.includes("|")).map(line => {
+    const [j, score, adv] = line.split("|").map(s => s.trim());
+    return { jurisdiction: j || "", score: parseInt(score, 10) || 0, advantage: adv || "" };
+  }).filter(j => j.jurisdiction && j.score > 0);
 }
 
 const tooltipStyle = {

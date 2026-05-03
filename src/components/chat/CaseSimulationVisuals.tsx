@@ -957,6 +957,12 @@ const SimulationLab = ({ baseWin, baseRisk, baseConfidence, baseTimelineWeeks, b
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5" /> Live
           </span>
+          {autofilled && (
+            <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-400/15 text-green-400 border border-green-400/30 flex items-center gap-1">
+              ✓ Autofilled from document
+            </motion.span>
+          )}
         </div>
         <button onClick={reset} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-secondary/60 hover:bg-secondary text-secondary-foreground transition-colors">
           <RotateCcw className="w-3 h-3" /> Reset

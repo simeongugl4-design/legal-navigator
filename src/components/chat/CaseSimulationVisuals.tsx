@@ -860,6 +860,26 @@ const SimulationLab = ({ baseWin, baseRisk, baseConfidence, baseTimelineWeeks, b
   const [venueId, setVenueId] = useState<string>("state");
   const [strategyId, setStrategyId] = useState<string>("balanced");
   const [publicSentiment, setPublicSentiment] = useState(50);
+  const [autofilled, setAutofilled] = useState(false);
+
+  // Listen for "Apply to Simulation" events from ingested documents
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.evidenceStrength === "number") setEvidence(Math.max(0, Math.min(100, d.evidenceStrength)));
+      if (typeof d.witnessCredibility === "number") setWitness(Math.max(0, Math.min(100, d.witnessCredibility)));
+      if (typeof d.documentationQuality === "number") setDocs(Math.max(0, Math.min(100, d.documentationQuality)));
+      if (typeof d.oppositionStrength === "number") setOpposition(Math.max(0, Math.min(100, d.oppositionStrength)));
+      if (typeof d.timelineUrgency === "number") setUrgency(Math.max(0, Math.min(100, d.timelineUrgency)));
+      if (typeof d.publicSentiment === "number") setPublicSentiment(Math.max(0, Math.min(100, d.publicSentiment)));
+      if (typeof d.suggestedVenue === "string" && VENUES.some(v => v.id === d.suggestedVenue)) setVenueId(d.suggestedVenue);
+      if (typeof d.suggestedStrategy === "string" && STRATEGIES.some(s => s.id === d.suggestedStrategy)) setStrategyId(d.suggestedStrategy);
+      setAutofilled(true);
+      setTimeout(() => setAutofilled(false), 2500);
+    };
+    window.addEventListener("prolaw:applySimInputs", handler);
+    return () => window.removeEventListener("prolaw:applySimInputs", handler);
+  }, []);
 
   const venue = VENUES.find(v => v.id === venueId)!;
   const strategy = STRATEGIES.find(s => s.id === strategyId)!;

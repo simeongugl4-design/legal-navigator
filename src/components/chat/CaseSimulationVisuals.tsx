@@ -1114,6 +1114,14 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
                 <WinProbabilityMeter outcomes={outcomes} />
               </div>
             )}
+            <SimulationLab
+              baseWin={baseWin}
+              baseRisk={riskScore ?? 50}
+              baseConfidence={confidence ?? 60}
+              baseTimelineWeeks={baseTimelineWeeks}
+              baseCostMid={baseCostMid}
+              baseSettlementMid={baseSettlementMid}
+            />
             {leverage.length > 0 && <LeverageStack data={leverage} />}
             {strengths.length > 0 && <StrengthRadar data={strengths} />}
             {jurisdictions.length > 0 && <JurisdictionComparison data={jurisdictions} />}

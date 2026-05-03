@@ -1072,6 +1072,22 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0 || citations.length > 0;
   if (!hasVisuals) return null;
 
+  // Derive baselines for the Simulation Lab from the AI's analysis
+  const baseWin = (() => {
+    const winOutcome = outcomes.find(o =>
+      o.name.toLowerCase().includes("win") || o.name.toLowerCase().includes("favor") ||
+      o.name.toLowerCase().includes("victory") || o.name.toLowerCase().includes("best")
+    );
+    return winOutcome?.probability ?? (confidence ?? 50);
+  })();
+  const baseTimelineWeeks = timeline.reduce((sum, t) => sum + (parseInt(t.duration, 10) || 0), 0) || 24;
+  const baseCostMid = costs.length
+    ? Math.round(costs.reduce((s, c) => s + (c.min + c.max) / 2, 0))
+    : 25000;
+  const baseSettlementMid = settlements.length
+    ? Math.round(settlements.reduce((s, x) => s + x.likely, 0) / settlements.length)
+    : 75000;
+
   return (
     <div className="mt-4">
       <SummaryStats risk={riskScore} confidence={confidence} outcomes={outcomes} />

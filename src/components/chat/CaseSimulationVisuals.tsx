@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -860,6 +860,26 @@ const SimulationLab = ({ baseWin, baseRisk, baseConfidence, baseTimelineWeeks, b
   const [venueId, setVenueId] = useState<string>("state");
   const [strategyId, setStrategyId] = useState<string>("balanced");
   const [publicSentiment, setPublicSentiment] = useState(50);
+  const [autofilled, setAutofilled] = useState(false);
+
+  // Listen for "Apply to Simulation" events from ingested documents
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.evidenceStrength === "number") setEvidence(Math.max(0, Math.min(100, d.evidenceStrength)));
+      if (typeof d.witnessCredibility === "number") setWitness(Math.max(0, Math.min(100, d.witnessCredibility)));
+      if (typeof d.documentationQuality === "number") setDocs(Math.max(0, Math.min(100, d.documentationQuality)));
+      if (typeof d.oppositionStrength === "number") setOpposition(Math.max(0, Math.min(100, d.oppositionStrength)));
+      if (typeof d.timelineUrgency === "number") setUrgency(Math.max(0, Math.min(100, d.timelineUrgency)));
+      if (typeof d.publicSentiment === "number") setPublicSentiment(Math.max(0, Math.min(100, d.publicSentiment)));
+      if (typeof d.suggestedVenue === "string" && VENUES.some(v => v.id === d.suggestedVenue)) setVenueId(d.suggestedVenue);
+      if (typeof d.suggestedStrategy === "string" && STRATEGIES.some(s => s.id === d.suggestedStrategy)) setStrategyId(d.suggestedStrategy);
+      setAutofilled(true);
+      setTimeout(() => setAutofilled(false), 2500);
+    };
+    window.addEventListener("prolaw:applySimInputs", handler);
+    return () => window.removeEventListener("prolaw:applySimInputs", handler);
+  }, []);
 
   const venue = VENUES.find(v => v.id === venueId)!;
   const strategy = STRATEGIES.find(s => s.id === strategyId)!;
@@ -937,6 +957,12 @@ const SimulationLab = ({ baseWin, baseRisk, baseConfidence, baseTimelineWeeks, b
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 flex items-center gap-1">
             <Sparkles className="w-2.5 h-2.5" /> Live
           </span>
+          {autofilled && (
+            <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+              className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-400/15 text-green-400 border border-green-400/30 flex items-center gap-1">
+              ✓ Autofilled from document
+            </motion.span>
+          )}
         </div>
         <button onClick={reset} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-secondary/60 hover:bg-secondary text-secondary-foreground transition-colors">
           <RotateCcw className="w-3 h-3" /> Reset

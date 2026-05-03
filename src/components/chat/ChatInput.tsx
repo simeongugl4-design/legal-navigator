@@ -24,8 +24,8 @@ const ChatInput = ({ input, setInput, isLoading, isRecording, onSend, onToggleRe
   return (
     <div className="shrink-0 p-3 border-t border-border bg-card/80 backdrop-blur-xl">
       <div className="flex items-end gap-2 max-w-3xl mx-auto">
-        <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx,.txt,.jpg,.png" onChange={onFileUpload} />
-        <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0" title="Upload document">
+        <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.docx,.txt,.md,.csv" onChange={onFileUpload} />
+        <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0" title="Upload PDF, DOCX, or text — auto-extracts case facts">
           <Paperclip className="w-5 h-5" />
         </button>
         <div className="flex-1 glass-panel flex items-end gap-1 px-3 py-1.5">

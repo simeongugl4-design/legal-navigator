@@ -8,10 +8,12 @@ import {
   ComposedChart, Scatter
 } from "recharts";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertTriangle, Shield, TrendingUp, Clock, ChevronDown, ChevronUp,
   Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame,
-  BadgeCheck, BookMarked, AlertOctagon, HelpCircle, XCircle, History, ExternalLink
+  BadgeCheck, BookMarked, AlertOctagon, HelpCircle, XCircle, History, ExternalLink,
+  SlidersHorizontal, MapPin, CalendarClock, Sparkles, RotateCcw, Wallet, Swords
 } from "lucide-react";
 
 interface CaseVisualsProps {
@@ -815,6 +817,243 @@ const SummaryStats = ({ risk, confidence, outcomes }: { risk: number | null; con
   );
 };
 
+// ============================================================
+// 🧪 INTERACTIVE SIMULATION LAB — adjust assumptions live
+// ============================================================
+type Venue = { id: string; label: string; winMod: number; costMod: number; speedMod: number; note: string };
+const VENUES: Venue[] = [
+  { id: "federal",   label: "Federal Court",       winMod:  +3, costMod: 1.4, speedMod: 1.3, note: "Rigorous, slower, higher cost — strong for federal claims" },
+  { id: "state",     label: "State Trial Court",   winMod:   0, costMod: 1.0, speedMod: 1.0, note: "Balanced default venue" },
+  { id: "smallclaims", label: "Small Claims",      winMod:  +8, costMod: 0.2, speedMod: 0.4, note: "Fast & cheap, capped damages" },
+  { id: "arbitration", label: "Arbitration",       winMod:  -4, costMod: 0.7, speedMod: 0.5, note: "Private, faster, limited appeal" },
+  { id: "mediation", label: "Mediation",           winMod:  +6, costMod: 0.3, speedMod: 0.3, note: "Settlement-focused, preserves relationships" },
+  { id: "appellate", label: "Appellate Court",     winMod:  -8, costMod: 1.8, speedMod: 1.6, note: "Reserved for legal-error appeals" },
+];
+
+type Strategy = { id: string; label: string; winMod: number; costMod: number; settleMod: number };
+const STRATEGIES: Strategy[] = [
+  { id: "aggressive", label: "Aggressive Litigation", winMod: +6, costMod: 1.5, settleMod: 1.25 },
+  { id: "balanced",   label: "Balanced",              winMod:  0, costMod: 1.0, settleMod: 1.0 },
+  { id: "settlement", label: "Settlement-First",      winMod: -3, costMod: 0.5, settleMod: 0.85 },
+];
+
+const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, Math.round(n)));
+const fmtMoney = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : `$${Math.round(n)}`;
+
+interface SimLabProps {
+  baseWin: number;
+  baseRisk: number;
+  baseConfidence: number;
+  baseTimelineWeeks: number;
+  baseCostMid: number;
+  baseSettlementMid: number;
+}
+
+const SimulationLab = ({ baseWin, baseRisk, baseConfidence, baseTimelineWeeks, baseCostMid, baseSettlementMid }: SimLabProps) => {
+  // Default sliders to neutral so user sees baseline first, then explores
+  const [evidence, setEvidence] = useState(60);          // 0-100 strength of evidence
+  const [witness, setWitness] = useState(55);            // 0-100 witness credibility
+  const [docs, setDocs] = useState(50);                  // 0-100 documentation quality
+  const [budget, setBudget] = useState(50);              // 0-100 budget / war chest
+  const [opposition, setOpposition] = useState(55);      // 0-100 opposing counsel strength
+  const [urgency, setUrgency] = useState(50);            // 0-100 timeline urgency (lower = more time)
+  const [venueId, setVenueId] = useState<string>("state");
+  const [strategyId, setStrategyId] = useState<string>("balanced");
+  const [publicSentiment, setPublicSentiment] = useState(50);
+
+  const venue = VENUES.find(v => v.id === venueId)!;
+  const strategy = STRATEGIES.find(s => s.id === strategyId)!;
+
+  const sim = useMemo(() => {
+    // Win probability — anchored to baseWin, modulated by inputs
+    const evidenceLift   = (evidence  - 50) * 0.45;   // ±22.5
+    const witnessLift    = (witness   - 50) * 0.25;   // ±12.5
+    const docsLift       = (docs      - 50) * 0.20;   // ±10
+    const oppositionDrag = (opposition - 50) * -0.30; // up to ±15
+    const sentimentLift  = (publicSentiment - 50) * 0.10;
+    const budgetLift     = (budget    - 50) * 0.15;
+
+    const win = clamp(
+      baseWin + evidenceLift + witnessLift + docsLift + oppositionDrag + sentimentLift + budgetLift +
+      venue.winMod + strategy.winMod
+    );
+
+    // Risk inversely tracks win, plus opposition + low budget penalties
+    const risk = clamp(
+      baseRisk + (50 - evidence) * 0.4 + (opposition - 50) * 0.3 + (50 - budget) * 0.2 - (sentimentLift * 0.5)
+    );
+
+    // Confidence rises with quality of inputs (less spread)
+    const inputQuality = (evidence + witness + docs) / 3;
+    const confidence = clamp(baseConfidence + (inputQuality - 50) * 0.4);
+
+    // Timeline — urgency speeds up (cheaper, riskier), venue & strategy modify
+    const urgencyFactor = 1 + (50 - urgency) / 100; // 0.5 -> 1.5
+    const timelineWeeks = Math.max(1, Math.round(baseTimelineWeeks * urgencyFactor * venue.speedMod * (strategy.id === "aggressive" ? 1.2 : strategy.id === "settlement" ? 0.6 : 1)));
+
+    // Cost — venue + strategy + budget aggressiveness
+    const costMid = Math.round(baseCostMid * venue.costMod * strategy.costMod * (1 + (budget - 50) / 200));
+
+    // Settlement value — driven by leverage (evidence + opposition weakness + sentiment)
+    const leverage = (evidence + (100 - opposition) + publicSentiment) / 3;
+    const settlementMid = Math.round(baseSettlementMid * strategy.settleMod * (0.6 + leverage / 100));
+
+    // Expected value = win% * settlement - (1-win%) * cost
+    const expectedValue = Math.round((win / 100) * settlementMid - ((100 - win) / 100) * costMid);
+
+    return { win, risk, confidence, timelineWeeks, costMid, settlementMid, expectedValue, leverage: Math.round(leverage) };
+  }, [evidence, witness, docs, budget, opposition, urgency, publicSentiment, venue, strategy, baseWin, baseRisk, baseConfidence, baseTimelineWeeks, baseCostMid, baseSettlementMid]);
+
+  const reset = () => {
+    setEvidence(60); setWitness(55); setDocs(50); setBudget(50);
+    setOpposition(55); setUrgency(50); setPublicSentiment(50);
+    setVenueId("state"); setStrategyId("balanced");
+  };
+
+  const winColor = sim.win >= 60 ? "text-green-400" : sim.win >= 40 ? "text-yellow-400" : "text-red-400";
+  const evColor  = sim.expectedValue >= 0 ? "text-green-400" : "text-red-400";
+  const riskColor = sim.risk <= 30 ? "text-green-400" : sim.risk <= 60 ? "text-yellow-400" : "text-red-400";
+
+  const SliderRow = ({ label, value, onChange, hint, icon: Icon }: { label: string; value: number; onChange: (n: number) => void; hint: string; icon: any }) => (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Icon className="w-3 h-3 text-primary" />
+          <span className="text-[11px] font-medium text-foreground">{label}</span>
+        </div>
+        <span className="text-[10px] font-mono text-primary">{value}</span>
+      </div>
+      <Slider value={[value]} onValueChange={(v) => onChange(v[0])} min={0} max={100} step={1} />
+      <p className="text-[9px] text-muted-foreground leading-tight">{hint}</p>
+    </div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 rounded-xl border border-primary/30">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-5 h-5 text-primary" />
+          <h4 className="text-sm font-semibold text-foreground">Interactive Simulation Lab</h4>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 flex items-center gap-1">
+            <Sparkles className="w-2.5 h-2.5" /> Live
+          </span>
+        </div>
+        <button onClick={reset} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-secondary/60 hover:bg-secondary text-secondary-foreground transition-colors">
+          <RotateCcw className="w-3 h-3" /> Reset
+        </button>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground mb-3">
+        Adjust your case assumptions — every metric below recalculates instantly using the AI's baseline analysis as the anchor.
+      </p>
+
+      {/* Live KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <motion.div key={sim.win} initial={{ scale: 0.95, opacity: 0.7 }} animate={{ scale: 1, opacity: 1 }} className="p-2 rounded-lg bg-secondary/40 border border-border/40">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Win Probability</p>
+          <p className={`text-lg font-bold ${winColor}`}>{sim.win}%</p>
+        </motion.div>
+        <motion.div key={sim.risk} initial={{ scale: 0.95, opacity: 0.7 }} animate={{ scale: 1, opacity: 1 }} className="p-2 rounded-lg bg-secondary/40 border border-border/40">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Risk Score</p>
+          <p className={`text-lg font-bold ${riskColor}`}>{sim.risk}/100</p>
+        </motion.div>
+        <motion.div key={sim.timelineWeeks} initial={{ scale: 0.95, opacity: 0.7 }} animate={{ scale: 1, opacity: 1 }} className="p-2 rounded-lg bg-secondary/40 border border-border/40">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Timeline</p>
+          <p className="text-lg font-bold text-foreground">{sim.timelineWeeks}<span className="text-[10px] text-muted-foreground"> wks</span></p>
+        </motion.div>
+        <motion.div key={sim.expectedValue} initial={{ scale: 0.95, opacity: 0.7 }} animate={{ scale: 1, opacity: 1 }} className="p-2 rounded-lg bg-secondary/40 border border-border/40">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Expected Value</p>
+          <p className={`text-lg font-bold ${evColor}`}>{fmtMoney(sim.expectedValue)}</p>
+        </motion.div>
+      </div>
+
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+        <div className="p-1.5 rounded bg-secondary/30">
+          <p className="text-[9px] text-muted-foreground">Settlement</p>
+          <p className="text-xs font-semibold text-foreground">{fmtMoney(sim.settlementMid)}</p>
+        </div>
+        <div className="p-1.5 rounded bg-secondary/30">
+          <p className="text-[9px] text-muted-foreground">Est. Cost</p>
+          <p className="text-xs font-semibold text-foreground">{fmtMoney(sim.costMid)}</p>
+        </div>
+        <div className="p-1.5 rounded bg-secondary/30">
+          <p className="text-[9px] text-muted-foreground">Leverage</p>
+          <p className="text-xs font-semibold text-primary">{sim.leverage}/100</p>
+        </div>
+      </div>
+
+      {/* Venue + Strategy selectors */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <MapPin className="w-3 h-3 text-primary" />
+            <span className="text-[11px] font-medium text-foreground">Venue</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {VENUES.map(v => (
+              <button key={v.id} onClick={() => setVenueId(v.id)}
+                className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${venueId === v.id ? "bg-primary/20 text-primary border-primary/50" : "bg-secondary/40 text-secondary-foreground border-border/40 hover:bg-secondary"}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[9px] text-muted-foreground mt-1.5 leading-tight">{venue.note}</p>
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Swords className="w-3 h-3 text-primary" />
+            <span className="text-[11px] font-medium text-foreground">Strategy</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {STRATEGIES.map(s => (
+              <button key={s.id} onClick={() => setStrategyId(s.id)}
+                className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${strategyId === s.id ? "bg-primary/20 text-primary border-primary/50" : "bg-secondary/40 text-secondary-foreground border-border/40 hover:bg-secondary"}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Sliders grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+        <SliderRow label="Evidence Strength" value={evidence} onChange={setEvidence} icon={Shield}
+          hint="Documentary, physical, and forensic evidence quality" />
+        <SliderRow label="Witness Credibility" value={witness} onChange={setWitness} icon={Users}
+          hint="Reliability and consistency of testimony" />
+        <SliderRow label="Documentation Quality" value={docs} onChange={setDocs} icon={BookMarked}
+          hint="Contracts, records, communications preserved" />
+        <SliderRow label="Legal Budget" value={budget} onChange={setBudget} icon={Wallet}
+          hint="Resources for experts, discovery, and trial prep" />
+        <SliderRow label="Opposing Counsel Strength" value={opposition} onChange={setOpposition} icon={Gavel}
+          hint="Higher = more sophisticated adversary (drags win %)" />
+        <SliderRow label="Timeline Urgency" value={urgency} onChange={setUrgency} icon={CalendarClock}
+          hint="Higher = need fast resolution (compresses schedule)" />
+        <SliderRow label="Public / Jury Sentiment" value={publicSentiment} onChange={setPublicSentiment} icon={Flame}
+          hint="Sympathy of likely jury pool toward your position" />
+      </div>
+
+      {/* AI recommendation banner */}
+      <motion.div key={`${sim.win}-${sim.expectedValue}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        className={`mt-4 p-2.5 rounded-lg border text-[11px] ${
+          sim.win >= 60 && sim.expectedValue > 0 ? "bg-green-500/10 border-green-500/30 text-green-300" :
+          sim.win >= 40 ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-300" :
+          "bg-red-500/10 border-red-500/30 text-red-300"
+        }`}>
+        <strong className="font-semibold">AI Recommendation: </strong>
+        {sim.win >= 65 && sim.expectedValue > sim.costMid * 0.5
+          ? "Proceed to litigation — odds favor you and expected value is strong."
+          : sim.win >= 50 && sim.settlementMid > sim.costMid
+            ? "Negotiate hard, file suit as leverage. Settle if offered ≥ " + fmtMoney(sim.settlementMid * 0.7) + "."
+            : sim.win >= 35
+              ? "Pursue settlement aggressively. Litigation risk outweighs probable reward."
+              : "Avoid trial. Strengthen evidence/witnesses or seek alternative resolution."}
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
   const [expanded, setExpanded] = useState(true);
   const riskScore = useMemo(() => parseRiskScore(content), [content]);
@@ -832,6 +1071,22 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
 
   const hasVisuals = riskScore !== null || confidence !== null || outcomes.length > 0 || timeline.length > 0 || council.length > 0 || citations.length > 0;
   if (!hasVisuals) return null;
+
+  // Derive baselines for the Simulation Lab from the AI's analysis
+  const baseWin = (() => {
+    const winOutcome = outcomes.find(o =>
+      o.name.toLowerCase().includes("win") || o.name.toLowerCase().includes("favor") ||
+      o.name.toLowerCase().includes("victory") || o.name.toLowerCase().includes("best")
+    );
+    return winOutcome?.probability ?? (confidence ?? 50);
+  })();
+  const baseTimelineWeeks = timeline.reduce((sum, t) => sum + (parseInt(t.duration, 10) || 0), 0) || 24;
+  const baseCostMid = costs.length
+    ? Math.round(costs.reduce((s, c) => s + (c.min + c.max) / 2, 0))
+    : 25000;
+  const baseSettlementMid = settlements.length
+    ? Math.round(settlements.reduce((s, x) => s + x.likely, 0) / settlements.length)
+    : 75000;
 
   return (
     <div className="mt-4">
@@ -859,6 +1114,14 @@ const CaseSimulationVisuals = ({ content }: CaseVisualsProps) => {
                 <WinProbabilityMeter outcomes={outcomes} />
               </div>
             )}
+            <SimulationLab
+              baseWin={baseWin}
+              baseRisk={riskScore ?? 50}
+              baseConfidence={confidence ?? 60}
+              baseTimelineWeeks={baseTimelineWeeks}
+              baseCostMid={baseCostMid}
+              baseSettlementMid={baseSettlementMid}
+            />
             {leverage.length > 0 && <LeverageStack data={leverage} />}
             {strengths.length > 0 && <StrengthRadar data={strengths} />}
             {jurisdictions.length > 0 && <JurisdictionComparison data={jurisdictions} />}

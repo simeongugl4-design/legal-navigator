@@ -13,6 +13,8 @@ const suggestionsByMode: Record<string, string[]> = {
     "Calculate maximum recovery (treble + punitive + fees)",
     "Identify the silver bullet kill-shot argument",
     "Generate the pre-suit demand letter",
+    "Re-run the simulation if my evidence is weaker",
+    "What changes if we move venue to federal court?",
   ],
   "contract-analyzer": [
     "Rewrite all risky clauses",

@@ -1,7 +1,6 @@
 // Client-side document parsing for PDF, DOCX, and plain text.
 import * as pdfjsLib from "pdfjs-dist";
 // Use a CDN worker URL to keep build simple
-// @ts-expect-error - vite import.meta on worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export async function extractTextFromFile(file: File): Promise<string> {

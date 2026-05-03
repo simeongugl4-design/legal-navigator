@@ -8,10 +8,12 @@ import {
   ComposedChart, Scatter
 } from "recharts";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import {
   AlertTriangle, Shield, TrendingUp, Clock, ChevronDown, ChevronUp,
   Zap, Target, Scale, Gavel, Users, DollarSign, BarChart3, Brain, Crown, Globe2, Flame,
-  BadgeCheck, BookMarked, AlertOctagon, HelpCircle, XCircle, History, ExternalLink
+  BadgeCheck, BookMarked, AlertOctagon, HelpCircle, XCircle, History, ExternalLink,
+  SlidersHorizontal, MapPin, CalendarClock, Sparkles, RotateCcw, Wallet, Swords
 } from "lucide-react";
 
 interface CaseVisualsProps {

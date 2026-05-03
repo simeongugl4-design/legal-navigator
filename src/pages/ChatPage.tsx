@@ -446,6 +446,19 @@ const ChatPage = () => {
                         }</ReactMarkdown>
                       </div>
                       <CaseSimulationVisuals content={msg.content} />
+                      {msg.ingestedFacts && (
+                        <div className="mt-3">
+                          <IngestedFactsCard
+                            facts={msg.ingestedFacts}
+                            filename={msg.ingestedFilename || "document"}
+                            onApplyToSimulation={() => {
+                              window.dispatchEvent(new CustomEvent("prolaw:applySimInputs", { detail: msg.ingestedFacts!.simulationInputs }));
+                              toast({ title: "Applied", description: "Simulation Lab updated with extracted inputs. Scroll up to adjust." });
+                            }}
+                            onAskQuestion={(q) => sendMessage(q)}
+                          />
+                        </div>
+                      )}
                       <MessageActions
                         content={msg.content}
                         onRetry={idx === filteredMessages.length - 1 ? retryLastMessage : undefined}

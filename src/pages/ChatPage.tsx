@@ -4,6 +4,8 @@ import { Scale, Gavel, FileText, BookOpen, Lightbulb, BookMarked, AlertTriangle,
 import CaseSimulationVisuals from "@/components/chat/CaseSimulationVisuals";
 import MessageActions from "@/components/chat/MessageActions";
 import FollowUpSuggestions from "@/components/chat/FollowUpSuggestions";
+import IngestedFactsCard from "@/components/chat/IngestedFactsCard";
+import { extractTextFromFile, type IngestedFacts } from "@/lib/documentParser";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -20,6 +22,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  ingestedFacts?: IngestedFacts;
+  ingestedFilename?: string;
 }
 
 const suggestedPrompts = [

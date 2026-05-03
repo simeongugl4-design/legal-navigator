@@ -268,20 +268,58 @@ const ChatPage = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please upload files smaller than 10MB.", variant: "destructive" });
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please upload files smaller than 20MB.", variant: "destructive" });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const content = reader.result as string;
-      sendMessage(`[Uploaded file: ${file.name}]\n\nAnalyze this document under ${selectedCountry?.constitutionName}. Provide clause-by-clause analysis, risk assessment, and recommendations:\n\n${content.slice(0, 5000)}`);
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: `📎 Uploaded **${file.name}** (${(file.size / 1024).toFixed(0)} KB) — running ProLAW Document Intelligence...`,
+      timestamp: new Date(),
     };
-    reader.readAsText(file);
-    e.target.value = "";
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+
+    try {
+      const text = await extractTextFromFile(file);
+      if (!text || text.trim().length < 20) {
+        throw new Error("Could not extract readable text. If this is a scanned PDF, OCR is needed.");
+      }
+
+      const { data, error } = await supabase.functions.invoke("prolaw-extract", {
+        body: {
+          documentText: text,
+          filename: file.name,
+          country: selectedCountry?.name,
+          language: selectedLanguage?.name,
+        },
+      });
+      if (error) throw error;
+      if (!data?.facts) throw new Error("No facts extracted");
+
+      const facts = data.facts as IngestedFacts;
+      const assistantMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `**📄 Document ingested:** ${facts.documentType}\n\n${facts.summary}\n\nThe ProLAW Intelligence panel below has extracted parties, dates, monetary amounts, clauses, red flags, and AI-suggested simulation inputs. Click **Apply to Simulation** to autofill the lab, or ask a follow-up question.`,
+        timestamp: new Date(),
+        ingestedFacts: facts,
+        ingestedFilename: file.name,
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+      toast({ title: "Document ingested", description: `${facts.legalIssues.length} legal issues, ${facts.redFlags.length} red flags, ${facts.keyClauses.length} clauses extracted.` });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Ingestion failed", description: err instanceof Error ? err.message : "Could not process document.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const exportChat = () => {

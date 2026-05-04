@@ -74,6 +74,39 @@ const DashboardPage = () => {
     }
   };
 
+  const deleteDocument = async (id: string) => {
+    const { error } = await supabase.from("case_documents").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
+    } else {
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      setSelectedDocs(prev => { const n = new Set(prev); n.delete(id); return n; });
+      toast({ title: "Deleted", description: "Document removed." });
+    }
+  };
+
+  const reapplyDocument = (doc: CaseDocument) => {
+    if (!doc.simulation_inputs) {
+      toast({ title: "No simulation inputs saved", description: "This document has no simulation profile.", variant: "destructive" });
+      return;
+    }
+    sessionStorage.setItem("prolaw:pendingSimInputs", JSON.stringify(doc.simulation_inputs));
+    sessionStorage.setItem("prolaw:pendingSimSource", doc.filename);
+    toast({ title: "Loaded into chat", description: `${doc.filename} simulation inputs ready to apply.` });
+    navigate("/chat");
+  };
+
+  const toggleDocSelect = (id: string) => {
+    setSelectedDocs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 3) next.add(id);
+      else toast({ title: "Compare up to 3 documents", description: "Deselect one first.", variant: "destructive" });
+      return next;
+    });
+  };
+
+  const compareSelected = documents.filter(d => selectedDocs.has(d.id));
   const getRiskColor = (score: number | null) => {
     if (score === null) return "text-muted-foreground";
     if (score <= 30) return "text-green-400";

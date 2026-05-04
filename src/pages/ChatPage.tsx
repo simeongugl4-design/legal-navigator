@@ -329,6 +329,29 @@ const ChatPage = () => {
         ingestedFilename: file.name,
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Persist to case_documents if signed in (so user can revisit & re-apply)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: saveErr } = await supabase.from("case_documents").insert({
+            user_id: user.id,
+            filename: file.name,
+            file_size_kb: Math.round(file.size / 1024),
+            document_type: facts.documentType,
+            summary: facts.summary,
+            extracted_text: text.slice(0, 200_000),
+            facts: facts as any,
+            simulation_inputs: facts.simulationInputs as any,
+            ocr_used: ocrUsed,
+          });
+          if (saveErr) console.warn("Failed to save case document", saveErr);
+          else toast({ title: "Saved to your case library", description: "Revisit it any time from the Dashboard." });
+        }
+      } catch (e) {
+        console.warn("Save skipped", e);
+      }
+
       toast({ title: "Document ingested", description: `${facts.legalIssues.length} legal issues, ${facts.redFlags.length} red flags, ${facts.keyClauses.length} clauses extracted.` });
     } catch (err) {
       console.error(err);

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp } from "lucide-react";
+import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
+import type { IngestedFacts } from "@/lib/documentParser";
 
 interface Consultation {
   id: string;

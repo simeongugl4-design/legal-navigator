@@ -287,9 +287,25 @@ const ChatPage = () => {
     setIsLoading(true);
 
     try {
-      const text = await extractTextFromFile(file);
+      let ocrUsed = false;
+      const text = await extractTextFromFile(file, (info) => {
+        if (info.stage === "ocr") {
+          ocrUsed = true;
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            const ocrLine = info.page
+              ? `🔍 OCR running on scanned page ${info.page}${info.totalPages ? ` of ${info.totalPages}` : ""}…`
+              : `🔍 Running OCR on image…`;
+            const newContent = `📎 Uploaded **${file.name}** (${(file.size / 1024).toFixed(0)} KB)\n\n${ocrLine}`;
+            return [...prev.slice(0, -1), { ...last, content: newContent }];
+          });
+        }
+      });
       if (!text || text.trim().length < 20) {
-        throw new Error("Could not extract readable text. If this is a scanned PDF, OCR is needed.");
+        throw new Error("Could not extract readable text from this document, even with OCR. The scan may be too low-quality.");
+      }
+      if (ocrUsed) {
+        toast({ title: "OCR applied", description: "Scanned pages were converted to text using OCR." });
       }
 
       const { data, error } = await supabase.functions.invoke("prolaw-extract", {

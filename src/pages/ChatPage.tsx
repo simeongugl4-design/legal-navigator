@@ -93,6 +93,29 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Pending simulation inputs from Dashboard "Re-apply"
+  useEffect(() => {
+    const raw = sessionStorage.getItem("prolaw:pendingSimInputs");
+    const source = sessionStorage.getItem("prolaw:pendingSimSource");
+    if (!raw) return;
+    try {
+      const inputs = JSON.parse(raw);
+      // Wait for SimulationLab to mount, then dispatch
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("prolaw:applySimInputs", { detail: inputs }));
+        toast({
+          title: "Simulation pre-loaded",
+          description: source ? `Inputs from ${source} applied to the lab.` : "Saved inputs applied.",
+        });
+      }, 600);
+    } catch (e) {
+      console.warn("Bad pending sim inputs", e);
+    } finally {
+      sessionStorage.removeItem("prolaw:pendingSimInputs");
+      sessionStorage.removeItem("prolaw:pendingSimSource");
+    }
+  }, [toast]);
+
   // Auto-save consultation
   const saveConsultation = useCallback(async () => {
     if (messages.length === 0 || !selectedCountry || !selectedLanguage) return;

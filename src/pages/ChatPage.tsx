@@ -93,6 +93,29 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Pending simulation inputs from Dashboard "Re-apply"
+  useEffect(() => {
+    const raw = sessionStorage.getItem("prolaw:pendingSimInputs");
+    const source = sessionStorage.getItem("prolaw:pendingSimSource");
+    if (!raw) return;
+    try {
+      const inputs = JSON.parse(raw);
+      // Wait for SimulationLab to mount, then dispatch
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("prolaw:applySimInputs", { detail: inputs }));
+        toast({
+          title: "Simulation pre-loaded",
+          description: source ? `Inputs from ${source} applied to the lab.` : "Saved inputs applied.",
+        });
+      }, 600);
+    } catch (e) {
+      console.warn("Bad pending sim inputs", e);
+    } finally {
+      sessionStorage.removeItem("prolaw:pendingSimInputs");
+      sessionStorage.removeItem("prolaw:pendingSimSource");
+    }
+  }, [toast]);
+
   // Auto-save consultation
   const saveConsultation = useCallback(async () => {
     if (messages.length === 0 || !selectedCountry || !selectedLanguage) return;
@@ -329,6 +352,29 @@ const ChatPage = () => {
         ingestedFilename: file.name,
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Persist to case_documents if signed in (so user can revisit & re-apply)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: saveErr } = await supabase.from("case_documents").insert({
+            user_id: user.id,
+            filename: file.name,
+            file_size_kb: Math.round(file.size / 1024),
+            document_type: facts.documentType,
+            summary: facts.summary,
+            extracted_text: text.slice(0, 200_000),
+            facts: facts as any,
+            simulation_inputs: facts.simulationInputs as any,
+            ocr_used: ocrUsed,
+          });
+          if (saveErr) console.warn("Failed to save case document", saveErr);
+          else toast({ title: "Saved to your case library", description: "Revisit it any time from the Dashboard." });
+        }
+      } catch (e) {
+        console.warn("Save skipped", e);
+      }
+
       toast({ title: "Document ingested", description: `${facts.legalIssues.length} legal issues, ${facts.redFlags.length} red flags, ${facts.keyClauses.length} clauses extracted.` });
     } catch (err) {
       console.error(err);

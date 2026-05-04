@@ -23,26 +23,43 @@ interface Consultation {
   messages: unknown[];
 }
 
+interface CaseDocument {
+  id: string;
+  filename: string;
+  document_type: string | null;
+  summary: string | null;
+  facts: IngestedFacts;
+  simulation_inputs: IngestedFacts["simulationInputs"] | null;
+  ocr_used: boolean;
+  file_size_kb: number | null;
+  created_at: string;
+}
+
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [documents, setDocuments] = useState<CaseDocument[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadConsultations();
+    loadAll();
   }, []);
 
-  const loadConsultations = async () => {
-    const { data, error } = await supabase
-      .from("consultations")
-      .select("*")
-      .order("updated_at", { ascending: false });
+  const loadAll = async () => {
+    const [consultsRes, docsRes] = await Promise.all([
+      supabase.from("consultations").select("*").order("updated_at", { ascending: false }),
+      supabase.from("case_documents").select("*").order("created_at", { ascending: false }),
+    ]);
 
-    if (error) {
+    if (consultsRes.error) {
       toast({ title: "Error", description: "Failed to load consultations", variant: "destructive" });
     } else {
-      setConsultations((data || []).map(d => ({ ...d, messages: Array.isArray(d.messages) ? d.messages : [] })));
+      setConsultations((consultsRes.data || []).map(d => ({ ...d, messages: Array.isArray(d.messages) ? d.messages : [] })));
+    }
+    if (!docsRes.error && docsRes.data) {
+      setDocuments(docsRes.data as unknown as CaseDocument[]);
     }
     setLoading(false);
   };

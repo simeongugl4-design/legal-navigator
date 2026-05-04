@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_documents: {
+        Row: {
+          consultation_id: string | null
+          created_at: string
+          document_type: string | null
+          extracted_text: string | null
+          facts: Json
+          file_size_kb: number | null
+          filename: string
+          id: string
+          notes: string | null
+          ocr_used: boolean
+          simulation_inputs: Json | null
+          summary: string | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consultation_id?: string | null
+          created_at?: string
+          document_type?: string | null
+          extracted_text?: string | null
+          facts?: Json
+          file_size_kb?: number | null
+          filename: string
+          id?: string
+          notes?: string | null
+          ocr_used?: boolean
+          simulation_inputs?: Json | null
+          summary?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consultation_id?: string | null
+          created_at?: string
+          document_type?: string | null
+          extracted_text?: string | null
+          facts?: Json
+          file_size_kb?: number | null
+          filename?: string
+          id?: string
+          notes?: string | null
+          ocr_used?: boolean
+          simulation_inputs?: Json | null
+          summary?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       consultations: {
         Row: {
           agent_mode: string

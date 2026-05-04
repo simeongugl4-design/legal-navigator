@@ -215,6 +215,166 @@ const DashboardPage = () => {
             </div>
           )}
         </div>
+
+        {/* Case Library — saved ingested documents */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <FileSearch className="w-5 h-5 text-primary" /> Case Document Library
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Saved ingested documents — revisit, compare side-by-side, and re-apply to new simulations.
+              </p>
+            </div>
+            {selectedDocs.size >= 2 && (
+              <span className="text-[11px] px-2 py-1 rounded-md bg-primary/15 text-primary">
+                {selectedDocs.size} selected for compare
+              </span>
+            )}
+          </div>
+
+          {documents.length === 0 ? (
+            <div className="glass-panel p-6 text-center">
+              <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No saved documents yet</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Upload a PDF, DOCX, or scanned image in chat — facts and simulation inputs are saved here automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {documents.map((d, i) => {
+                const isSelected = selectedDocs.has(d.id);
+                return (
+                  <motion.div
+                    key={d.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className={`glass-panel p-4 transition-all ${isSelected ? "ring-2 ring-primary" : ""}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <h4 className="text-sm font-medium text-foreground truncate">{d.filename}</h4>
+                          {d.ocr_used && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 shrink-0">OCR</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {d.document_type || "Document"} • {d.file_size_kb ? `${d.file_size_kb} KB` : ""} • {new Date(d.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteDocument(d.id)}
+                        className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {d.summary && (
+                      <p className="text-xs text-secondary-foreground line-clamp-2 mb-2">{d.summary}</p>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5 mb-3 text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground">
+                        {d.facts?.parties?.length || 0} parties
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground">
+                        {d.facts?.keyDates?.length || 0} dates
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-secondary/50 text-muted-foreground">
+                        {d.facts?.monetaryAmounts?.length || 0} amounts
+                      </span>
+                      {(d.facts?.redFlags?.length || 0) > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 flex items-center gap-1">
+                          <AlertOctagon className="w-2.5 h-2.5" /> {d.facts.redFlags.length} red flags
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => reapplyDocument(d)}
+                        className="flex-1 text-[11px] font-medium px-2 py-1.5 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Sparkles className="w-3 h-3" /> Re-apply to Sim
+                      </button>
+                      <button
+                        onClick={() => toggleDocSelect(d.id)}
+                        className={`text-[11px] font-medium px-2 py-1.5 rounded-lg transition-colors ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary/50 hover:bg-secondary text-foreground"
+                        }`}
+                      >
+                        {isSelected ? "Selected" : "Compare"}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Comparison panel */}
+          {compareSelected.length >= 2 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-panel p-4 mt-4"
+            >
+              <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" /> Side-by-Side Comparison
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Metric</th>
+                      {compareSelected.map(d => (
+                        <th key={d.id} className="text-left py-2 pr-3 font-medium text-foreground truncate max-w-[180px]">
+                          {d.filename}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="text-foreground">
+                    {[
+                      ["Document type", (d: CaseDocument) => d.document_type || "—"],
+                      ["Parties", (d: CaseDocument) => String(d.facts?.parties?.length || 0)],
+                      ["Key dates", (d: CaseDocument) => String(d.facts?.keyDates?.length || 0)],
+                      ["Monetary amounts", (d: CaseDocument) => String(d.facts?.monetaryAmounts?.length || 0)],
+                      ["Legal issues", (d: CaseDocument) => String(d.facts?.legalIssues?.length || 0)],
+                      ["Red flags", (d: CaseDocument) => String(d.facts?.redFlags?.length || 0)],
+                      ["Evidence strength", (d: CaseDocument) => d.simulation_inputs?.evidenceStrength?.toString() ?? "—"],
+                      ["Documentation quality", (d: CaseDocument) => d.simulation_inputs?.documentationQuality?.toString() ?? "—"],
+                      ["Opposition strength", (d: CaseDocument) => d.simulation_inputs?.oppositionStrength?.toString() ?? "—"],
+                      ["Suggested venue", (d: CaseDocument) => d.simulation_inputs?.suggestedVenue ?? "—"],
+                      ["Suggested strategy", (d: CaseDocument) => d.simulation_inputs?.suggestedStrategy ?? "—"],
+                    ].map(([label, fn]) => (
+                      <tr key={label as string} className="border-b border-border/50">
+                        <td className="py-1.5 pr-3 text-muted-foreground">{label as string}</td>
+                        {compareSelected.map(d => (
+                          <td key={d.id} className="py-1.5 pr-3">{(fn as (d: CaseDocument) => string)(d)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                onClick={() => setSelectedDocs(new Set())}
+                className="mt-3 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Clear selection
+              </button>
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   );

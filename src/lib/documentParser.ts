@@ -96,11 +96,11 @@ export async function extractTextFromFile(
 
   // Image OCR (png/jpg/jpeg/webp) — useful for scanned receipts, evidence photos
   if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) {
-    onProgress?.({ stage: "ocr", message: "Running OCR on image…" });
+    onProgress?.({ stage: "ocr", message: `Running OCR on image [${langs}]…` });
     const Tesseract: any = await import("tesseract.js");
     const url = URL.createObjectURL(file);
     try {
-      const { data } = await Tesseract.recognize(url, "eng");
+      const { data } = await Tesseract.recognize(url, langs);
       onProgress?.({ stage: "done" });
       return (data?.text || "").trim();
     } finally {

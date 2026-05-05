@@ -113,16 +113,26 @@ export async function extractTextFromFile(
     const url = URL.createObjectURL(file);
     try {
       const { data } = await Tesseract.recognize(url, langs);
-      onProgress?.({ stage: "done" });
-      return (data?.text || "").trim();
+      const raw = (data?.text || "").trim();
+      const bilingual = analyzeBilingual(raw);
+      if (bilingual.isMultilingual) {
+        onProgress?.({ stage: "bilingual", bilingual, message: `Detected ${bilingual.scripts.length} scripts` });
+      }
+      onProgress?.({ stage: "done", bilingual: bilingual.isMultilingual ? bilingual : undefined });
+      return bilingual.isMultilingual ? bilingual.annotated : raw;
     } finally {
       URL.revokeObjectURL(url);
     }
   }
 
   // Plain text fallback (txt, md, csv, etc.)
-  onProgress?.({ stage: "done" });
-  return await file.text();
+  const raw = await file.text();
+  const bilingual = analyzeBilingual(raw);
+  if (bilingual.isMultilingual) {
+    onProgress?.({ stage: "bilingual", bilingual });
+  }
+  onProgress?.({ stage: "done", bilingual: bilingual.isMultilingual ? bilingual : undefined });
+  return bilingual.isMultilingual ? bilingual.annotated : raw;
 }
 
 export type IngestedFacts = {

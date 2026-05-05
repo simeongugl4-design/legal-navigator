@@ -312,6 +312,7 @@ const ChatPage = () => {
 
     try {
       let ocrUsed = false;
+      let bilingualInfo: { scripts: string[]; segments: number } | null = null;
       const ocrLangs = buildOcrLangs({
         selectedLanguageCode: selectedLanguage?.code,
         countryLanguageCodes: selectedCountry?.languages.map(l => l.code),
@@ -328,12 +329,25 @@ const ChatPage = () => {
             return [...prev.slice(0, -1), { ...last, content: newContent }];
           });
         }
+        if (info.stage === "bilingual" && info.bilingual) {
+          const labels = Array.from(new Set(info.bilingual.segments.map(s => s.label)));
+          bilingualInfo = { scripts: labels, segments: info.bilingual.segments.length };
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            const line = `🌐 **Multilingual document detected** — split into ${info.bilingual!.segments.length} blocks across scripts: ${labels.join(", ")}. Each language block will be analyzed independently for higher accuracy.`;
+            const newContent = `📎 Uploaded **${file.name}** (${(file.size / 1024).toFixed(0)} KB)\n\n${line}`;
+            return [...prev.slice(0, -1), { ...last, content: newContent }];
+          });
+        }
       }, { langs: ocrLangs });
       if (!text || text.trim().length < 20) {
         throw new Error("Could not extract readable text from this document, even with OCR. The scan may be too low-quality.");
       }
       if (ocrUsed) {
-        toast({ title: "OCR applied", description: `Scanned content converted using languages: ${buildOcrLangs({ selectedLanguageCode: selectedLanguage?.code, countryLanguageCodes: selectedCountry?.languages.map(l => l.code) })}` });
+        toast({ title: "OCR applied", description: `Scanned content converted using languages: ${ocrLangs}` });
+      }
+      if (bilingualInfo) {
+        toast({ title: "Bilingual split", description: `Detected ${(bilingualInfo as any).scripts.length} scripts — segmented for accurate extraction.` });
       }
 
       const { data, error } = await supabase.functions.invoke("prolaw-extract", {
@@ -342,6 +356,7 @@ const ChatPage = () => {
           filename: file.name,
           country: selectedCountry?.name,
           language: selectedLanguage?.name,
+          bilingual: bilingualInfo,
         },
       });
       if (error) throw error;

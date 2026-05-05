@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch } from "lucide-react";
+import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch, Download, Printer } from "lucide-react";
+import { exportCaseLibraryPDF } from "@/lib/caseLibraryExport";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useNavigate } from "react-router-dom";
@@ -227,11 +228,36 @@ const DashboardPage = () => {
                 Saved ingested documents — revisit, compare side-by-side, and re-apply to new simulations.
               </p>
             </div>
-            {selectedDocs.size >= 2 && (
-              <span className="text-[11px] px-2 py-1 rounded-md bg-primary/15 text-primary">
-                {selectedDocs.size} selected for compare
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {selectedDocs.size >= 2 && (
+                <span className="text-[11px] px-2 py-1 rounded-md bg-primary/15 text-primary">
+                  {selectedDocs.size} selected for compare
+                </span>
+              )}
+              {documents.length > 0 && (
+                <>
+                  {selectedDocs.size > 0 && (
+                    <button
+                      onClick={() => exportCaseLibraryPDF(
+                        documents.filter(d => selectedDocs.has(d.id)),
+                        { title: `Selected ${selectedDocs.size} document${selectedDocs.size === 1 ? "" : "s"}` }
+                      )}
+                      className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary flex items-center gap-1.5 transition-colors"
+                      title="Export selected documents to PDF"
+                    >
+                      <Download className="w-3 h-3" /> Export Selected
+                    </button>
+                  )}
+                  <button
+                    onClick={() => exportCaseLibraryPDF(documents, { title: "Full Case Library" })}
+                    className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 transition-colors shadow-lg shadow-primary/20"
+                    title="Export entire library as printable PDF report"
+                  >
+                    <Printer className="w-3 h-3" /> Export Library PDF
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {documents.length === 0 ? (

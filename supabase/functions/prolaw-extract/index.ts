@@ -55,7 +55,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { documentText, filename, country, language } = await req.json();
+    const { documentText, filename, country, language, bilingual } = await req.json();
     if (!documentText || typeof documentText !== "string") {
       return new Response(JSON.stringify({ error: "documentText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -66,9 +66,13 @@ serve(async (req) => {
     // Cap text size to keep latency reasonable
     const text = documentText.slice(0, 60000);
 
+    const bilingualNote = bilingual && bilingual.scripts?.length
+      ? `\n\nMULTILINGUAL DOCUMENT: This document was auto-detected as containing ${bilingual.scripts.length} scripts (${bilingual.scripts.join(", ")}) and was pre-segmented into ${bilingual.segments} blocks marked with "### [Block N — Script, chars]" headers below. For each block:\n- Translate non-English content internally before extraction\n- Cross-reference parties/dates/amounts that appear in multiple language blocks (they often refer to the same entities) and DEDUPLICATE them in your output\n- Note in the summary which languages are present and which version is authoritative if discernible (e.g. "the French version controls per clause X")\n- If clauses differ between language versions, flag this as a redFlag.`
+      : "";
+
     const userPrompt = `Filename: ${filename || "unknown"}
 Jurisdiction: ${country || "not specified"}
-Response language: ${language || "English"}
+Response language: ${language || "English"}${bilingualNote}
 
 DOCUMENT CONTENT:
 """

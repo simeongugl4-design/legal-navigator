@@ -102,8 +102,13 @@ export async function extractTextFromFile(
     const mammoth = await import("mammoth/mammoth.browser");
     const buf = await file.arrayBuffer();
     const { value } = await mammoth.extractRawText({ arrayBuffer: buf });
-    onProgress?.({ stage: "done" });
-    return value || "";
+    const raw = value || "";
+    const bilingual = analyzeBilingual(raw);
+    if (bilingual.isMultilingual) {
+      onProgress?.({ stage: "bilingual", bilingual });
+    }
+    onProgress?.({ stage: "done", bilingual: bilingual.isMultilingual ? bilingual : undefined });
+    return bilingual.isMultilingual ? bilingual.annotated : raw;
   }
 
   // Image OCR (png/jpg/jpeg/webp) — useful for scanned receipts, evidence photos

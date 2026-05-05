@@ -66,10 +66,10 @@ export async function extractTextFromFile(
           stage: "ocr",
           page: i,
           totalPages: maxPages,
-          message: `Running OCR on page ${i} (scanned)…`,
+          message: `Running OCR on page ${i} (scanned) [${langs}]…`,
         });
         try {
-          const ocrText = await ocrPage(page, i);
+          const ocrText = await ocrPage(page, i, langs);
           text += `\n--- Page ${i} (OCR) ---\n${ocrText}\n`;
         } catch (err) {
           console.warn(`OCR failed on page ${i}`, err);

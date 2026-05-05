@@ -1,13 +1,15 @@
 // Client-side document parsing for PDF (with OCR fallback), DOCX, and plain text.
 import * as pdfjsLib from "pdfjs-dist";
+import { analyzeBilingual, type BilingualAnalysis } from "./bilingualOcr";
 // Use a CDN worker URL to keep build simple
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export type ParseProgress = (info: {
-  stage: "parsing" | "ocr" | "done";
+  stage: "parsing" | "ocr" | "done" | "bilingual";
   page?: number;
   totalPages?: number;
   message?: string;
+  bilingual?: BilingualAnalysis;
 }) => void;
 
 // Heuristic: if extracted text is shorter than this for a page, we treat it as scanned.
@@ -78,12 +80,22 @@ export async function extractTextFromFile(
       }
     }
 
+    // Multilingual segmentation: detect & split by script for accurate extraction
+    const bilingual = analyzeBilingual(text);
+    if (bilingual.isMultilingual) {
+      onProgress?.({
+        stage: "bilingual",
+        bilingual,
+        message: `Detected ${bilingual.scripts.length} scripts: ${bilingual.segments.map(s => s.label).filter((v, i, a) => a.indexOf(v) === i).join(", ")}`,
+      });
+    }
     onProgress?.({
       stage: "done",
       totalPages: maxPages,
       message: scannedPagesCount > 0 ? `OCR applied to ${scannedPagesCount} scanned page(s).` : undefined,
+      bilingual: bilingual.isMultilingual ? bilingual : undefined,
     });
-    return text.trim();
+    return bilingual.isMultilingual ? bilingual.annotated : text.trim();
   }
 
   if (name.endsWith(".docx")) {

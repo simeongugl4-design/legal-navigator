@@ -13,7 +13,12 @@ export type ParseProgress = (info: {
 // Heuristic: if extracted text is shorter than this for a page, we treat it as scanned.
 const OCR_MIN_CHARS_PER_PAGE = 40;
 
-async function ocrPage(page: any, pageNum: number, scale = 2): Promise<string> {
+export interface OcrOptions {
+  /** Tesseract language string, e.g. "eng", "fra+eng", "ara+eng". Defaults to "eng". */
+  langs?: string;
+}
+
+async function ocrPage(page: any, pageNum: number, langs: string, scale = 2): Promise<string> {
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement("canvas");
   canvas.width = Math.ceil(viewport.width);
@@ -24,17 +29,20 @@ async function ocrPage(page: any, pageNum: number, scale = 2): Promise<string> {
 
   // Lazy import so the OCR engine only loads when needed
   const Tesseract: any = await import("tesseract.js");
-  const { data } = await Tesseract.recognize(canvas, "eng", {
-    // Quiet logger; hooked progress is reported via onProgress in extractTextFromFile
-  });
+  const { data } = await Tesseract.recognize(canvas, langs);
   // Free canvas memory
   canvas.width = 0;
   canvas.height = 0;
   return (data?.text || "").trim();
 }
 
-export async function extractTextFromFile(file: File, onProgress?: ParseProgress): Promise<string> {
+export async function extractTextFromFile(
+  file: File,
+  onProgress?: ParseProgress,
+  options: OcrOptions = {},
+): Promise<string> {
   const name = file.name.toLowerCase();
+  const langs = options.langs && options.langs.trim().length > 0 ? options.langs : "eng";
 
   if (name.endsWith(".pdf")) {
     const buf = await file.arrayBuffer();
@@ -58,10 +66,10 @@ export async function extractTextFromFile(file: File, onProgress?: ParseProgress
           stage: "ocr",
           page: i,
           totalPages: maxPages,
-          message: `Running OCR on page ${i} (scanned)…`,
+          message: `Running OCR on page ${i} (scanned) [${langs}]…`,
         });
         try {
-          const ocrText = await ocrPage(page, i);
+          const ocrText = await ocrPage(page, i, langs);
           text += `\n--- Page ${i} (OCR) ---\n${ocrText}\n`;
         } catch (err) {
           console.warn(`OCR failed on page ${i}`, err);
@@ -88,11 +96,11 @@ export async function extractTextFromFile(file: File, onProgress?: ParseProgress
 
   // Image OCR (png/jpg/jpeg/webp) — useful for scanned receipts, evidence photos
   if (/\.(png|jpe?g|webp|bmp)$/i.test(name)) {
-    onProgress?.({ stage: "ocr", message: "Running OCR on image…" });
+    onProgress?.({ stage: "ocr", message: `Running OCR on image [${langs}]…` });
     const Tesseract: any = await import("tesseract.js");
     const url = URL.createObjectURL(file);
     try {
-      const { data } = await Tesseract.recognize(url, "eng");
+      const { data } = await Tesseract.recognize(url, langs);
       onProgress?.({ stage: "done" });
       return (data?.text || "").trim();
     } finally {

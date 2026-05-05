@@ -6,6 +6,7 @@ import MessageActions from "@/components/chat/MessageActions";
 import FollowUpSuggestions from "@/components/chat/FollowUpSuggestions";
 import IngestedFactsCard from "@/components/chat/IngestedFactsCard";
 import { extractTextFromFile, type IngestedFacts } from "@/lib/documentParser";
+import { buildOcrLangs } from "@/lib/ocrLanguages";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -311,24 +312,28 @@ const ChatPage = () => {
 
     try {
       let ocrUsed = false;
+      const ocrLangs = buildOcrLangs({
+        selectedLanguageCode: selectedLanguage?.code,
+        countryLanguageCodes: selectedCountry?.languages.map(l => l.code),
+      });
       const text = await extractTextFromFile(file, (info) => {
         if (info.stage === "ocr") {
           ocrUsed = true;
           setMessages(prev => {
             const last = prev[prev.length - 1];
             const ocrLine = info.page
-              ? `🔍 OCR running on scanned page ${info.page}${info.totalPages ? ` of ${info.totalPages}` : ""}…`
-              : `🔍 Running OCR on image…`;
+              ? `🔍 OCR running on scanned page ${info.page}${info.totalPages ? ` of ${info.totalPages}` : ""} — languages: \`${ocrLangs}\`…`
+              : `🔍 Running OCR on image — languages: \`${ocrLangs}\`…`;
             const newContent = `📎 Uploaded **${file.name}** (${(file.size / 1024).toFixed(0)} KB)\n\n${ocrLine}`;
             return [...prev.slice(0, -1), { ...last, content: newContent }];
           });
         }
-      });
+      }, { langs: ocrLangs });
       if (!text || text.trim().length < 20) {
         throw new Error("Could not extract readable text from this document, even with OCR. The scan may be too low-quality.");
       }
       if (ocrUsed) {
-        toast({ title: "OCR applied", description: "Scanned pages were converted to text using OCR." });
+        toast({ title: "OCR applied", description: `Scanned content converted using languages: ${buildOcrLangs({ selectedLanguageCode: selectedLanguage?.code, countryLanguageCodes: selectedCountry?.languages.map(l => l.code) })}` });
       }
 
       const { data, error } = await supabase.functions.invoke("prolaw-extract", {

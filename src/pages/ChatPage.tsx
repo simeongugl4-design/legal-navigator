@@ -312,7 +312,7 @@ const ChatPage = () => {
 
     try {
       let ocrUsed = false;
-      let bilingualInfo: { scripts: string[]; segments: number } | null = null;
+      let bilingualInfo: { scripts: string[]; segments: number; blocks?: { label: string; charCount: number }[] } | null = null;
       const ocrLangs = buildOcrLangs({
         selectedLanguageCode: selectedLanguage?.code,
         countryLanguageCodes: selectedCountry?.languages.map(l => l.code),

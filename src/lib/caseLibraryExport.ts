@@ -19,10 +19,25 @@ const SILVER: [number, number, number] = [148, 163, 184];
 const ACCENT: [number, number, number] = [99, 132, 255];
 const RED: [number, number, number] = [220, 70, 70];
 
-export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { title?: string }) {
+export type PageScale = "a4" | "letter" | "legal" | "a3";
+
+export interface ExportSettings {
+  title?: string;
+  pageScale?: PageScale;
+  includeOcrNotes?: boolean;
+  includeRedFlags?: boolean;
+  redactRedFlags?: boolean;
+}
+
+export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: ExportSettings) {
   if (!docs.length) return;
 
-  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const pageScale: PageScale = opts?.pageScale || "a4";
+  const includeOcrNotes = opts?.includeOcrNotes ?? true;
+  const includeRedFlags = opts?.includeRedFlags ?? true;
+  const redactRedFlags = opts?.redactRedFlags ?? false;
+
+  const pdf = new jsPDF({ unit: "pt", format: pageScale });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const margin = 40;

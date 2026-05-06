@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch, Download, Printer } from "lucide-react";
-import { exportCaseLibraryPDF } from "@/lib/caseLibraryExport";
+import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch, Download, Printer, Settings2, X } from "lucide-react";
+import { exportCaseLibraryPDF, type PageScale, type ExportSettings } from "@/lib/caseLibraryExport";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useNavigate } from "react-router-dom";
@@ -43,6 +43,31 @@ const DashboardPage = () => {
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [showExportSettings, setShowExportSettings] = useState<null | "all" | "selected">(null);
+  const [exportSettings, setExportSettings] = useState<{
+    pageScale: PageScale;
+    includeOcrNotes: boolean;
+    includeRedFlags: boolean;
+    redactRedFlags: boolean;
+  }>({
+    pageScale: "a4",
+    includeOcrNotes: true,
+    includeRedFlags: true,
+    redactRedFlags: false,
+  });
+
+  const runExport = (mode: "all" | "selected") => {
+    const docs = mode === "selected" ? documents.filter(d => selectedDocs.has(d.id)) : documents;
+    if (!docs.length) return;
+    exportCaseLibraryPDF(docs, {
+      ...exportSettings,
+      title: mode === "selected"
+        ? `Selected ${docs.length} document${docs.length === 1 ? "" : "s"}`
+        : "Full Case Library",
+    });
+    setShowExportSettings(null);
+    toast({ title: "Export started", description: `PDF (${exportSettings.pageScale.toUpperCase()}) is downloading.` });
+  };
 
   useEffect(() => {
     loadAll();
@@ -238,10 +263,7 @@ const DashboardPage = () => {
                 <>
                   {selectedDocs.size > 0 && (
                     <button
-                      onClick={() => exportCaseLibraryPDF(
-                        documents.filter(d => selectedDocs.has(d.id)),
-                        { title: `Selected ${selectedDocs.size} document${selectedDocs.size === 1 ? "" : "s"}` }
-                      )}
+                      onClick={() => setShowExportSettings("selected")}
                       className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary flex items-center gap-1.5 transition-colors"
                       title="Export selected documents to PDF"
                     >
@@ -249,7 +271,7 @@ const DashboardPage = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => exportCaseLibraryPDF(documents, { title: "Full Case Library" })}
+                    onClick={() => setShowExportSettings("all")}
                     className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 transition-colors shadow-lg shadow-primary/20"
                     title="Export entire library as printable PDF report"
                   >
@@ -402,6 +424,125 @@ const DashboardPage = () => {
           )}
         </div>
       </div>
+
+      {/* Export Settings Dialog */}
+      {showExportSettings && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowExportSettings(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="glass-panel max-w-md w-full p-5 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-primary" /> Export Settings
+              </h3>
+              <button
+                onClick={() => setShowExportSettings(null)}
+                className="p-1 rounded hover:bg-secondary/50 text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-2">
+              {showExportSettings === "selected"
+                ? `Exporting ${selectedDocs.size} selected document${selectedDocs.size === 1 ? "" : "s"}.`
+                : `Exporting full library (${documents.length} documents).`}
+            </p>
+
+            {/* Page scale */}
+            <div>
+              <label className="text-xs font-medium text-foreground block mb-1.5">Page Scale</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["a4", "letter", "legal", "a3"] as PageScale[]).map(scale => (
+                  <button
+                    key={scale}
+                    onClick={() => setExportSettings(s => ({ ...s, pageScale: scale }))}
+                    className={`text-[11px] py-1.5 rounded-md uppercase font-medium transition-colors ${
+                      exportSettings.pageScale === scale
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/50 hover:bg-secondary text-foreground"
+                    }`}
+                  >
+                    {scale}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* OCR notes toggle */}
+            <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-md hover:bg-secondary/30">
+              <input
+                type="checkbox"
+                checked={exportSettings.includeOcrNotes}
+                onChange={(e) => setExportSettings(s => ({ ...s, includeOcrNotes: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-primary"
+              />
+              <div>
+                <div className="text-xs font-medium text-foreground">Include OCR notes</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Show OCR badges, processing notes, and the OCR column in the overview.
+                </div>
+              </div>
+            </label>
+
+            {/* Red flags toggle */}
+            <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-md hover:bg-secondary/30">
+              <input
+                type="checkbox"
+                checked={exportSettings.includeRedFlags}
+                onChange={(e) => setExportSettings(s => ({ ...s, includeRedFlags: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-primary"
+              />
+              <div>
+                <div className="text-xs font-medium text-foreground flex items-center gap-1">
+                  <AlertOctagon className="w-3 h-3 text-red-400" /> Include red-flag content
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Sensitive risk findings. Disable to fully omit from the report.
+                </div>
+              </div>
+            </label>
+
+            {/* Redact red flags */}
+            {exportSettings.includeRedFlags && (
+              <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-md hover:bg-secondary/30 ml-4 border-l-2 border-border pl-3">
+                <input
+                  type="checkbox"
+                  checked={exportSettings.redactRedFlags}
+                  onChange={(e) => setExportSettings(s => ({ ...s, redactRedFlags: e.target.checked }))}
+                  className="mt-0.5 w-4 h-4 accent-primary"
+                />
+                <div>
+                  <div className="text-xs font-medium text-foreground">Redact sensitive details</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Mask red-flag text with █ blocks for safe sharing.
+                  </div>
+                </div>
+              </label>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowExportSettings(null)}
+                className="text-xs px-3 py-1.5 rounded-md bg-secondary/50 hover:bg-secondary text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => runExport(showExportSettings)}
+                className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5"
+              >
+                <Printer className="w-3 h-3" /> Generate PDF
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

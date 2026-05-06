@@ -19,10 +19,25 @@ const SILVER: [number, number, number] = [148, 163, 184];
 const ACCENT: [number, number, number] = [99, 132, 255];
 const RED: [number, number, number] = [220, 70, 70];
 
-export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { title?: string }) {
+export type PageScale = "a4" | "letter" | "legal" | "a3";
+
+export interface ExportSettings {
+  title?: string;
+  pageScale?: PageScale;
+  includeOcrNotes?: boolean;
+  includeRedFlags?: boolean;
+  redactRedFlags?: boolean;
+}
+
+export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: ExportSettings) {
   if (!docs.length) return;
 
-  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const pageScale: PageScale = opts?.pageScale || "a4";
+  const includeOcrNotes = opts?.includeOcrNotes ?? true;
+  const includeRedFlags = opts?.includeRedFlags ?? true;
+  const redactRedFlags = opts?.redactRedFlags ?? false;
+
+  const pdf = new jsPDF({ unit: "pt", format: pageScale });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const margin = 40;
@@ -88,18 +103,26 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { ti
 
   y = 140;
   heading(`Library Overview (${docs.length} document${docs.length === 1 ? "" : "s"})`, 14, NAVY);
+  const overviewHead = ["#", "Filename", "Type", "Parties"];
+  if (includeRedFlags) overviewHead.push("Red Flags");
+  if (includeOcrNotes) overviewHead.push("OCR");
+  overviewHead.push("Date");
+
   autoTable(pdf, {
     startY: y,
-    head: [["#", "Filename", "Type", "Parties", "Red Flags", "OCR", "Date"]],
-    body: docs.map((d, i) => [
-      String(i + 1),
-      d.filename,
-      d.document_type || "—",
-      String(d.facts?.parties?.length || 0),
-      String(d.facts?.redFlags?.length || 0),
-      d.ocr_used ? "Yes" : "No",
-      new Date(d.created_at).toLocaleDateString(),
-    ]),
+    head: [overviewHead],
+    body: docs.map((d, i) => {
+      const row: string[] = [
+        String(i + 1),
+        d.filename,
+        d.document_type || "—",
+        String(d.facts?.parties?.length || 0),
+      ];
+      if (includeRedFlags) row.push(String(d.facts?.redFlags?.length || 0));
+      if (includeOcrNotes) row.push(d.ocr_used ? "Yes" : "No");
+      row.push(new Date(d.created_at).toLocaleDateString());
+      return row;
+    }),
     styles: { fontSize: 9, cellPadding: 4 },
     headStyles: { fillColor: NAVY, textColor: 255 },
     alternateRowStyles: { fillColor: [245, 247, 252] },
@@ -114,7 +137,7 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { ti
 
     heading(`${idx + 1}. ${d.filename}`, 16, NAVY);
     sub(`${d.document_type || "Document"} • ${d.file_size_kb ?? "?"} KB • Saved ${new Date(d.created_at).toLocaleString()}`);
-    if (d.ocr_used) {
+    if (d.ocr_used && includeOcrNotes) {
       pdf.setFillColor(...ACCENT);
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(8);
@@ -213,10 +236,23 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { ti
       y += 4;
     }
 
-    // Red flags
-    if (d.facts?.redFlags?.length) {
+    // Red flags (sensitive — controlled by export settings)
+    if (includeRedFlags && d.facts?.redFlags?.length) {
       heading("Red Flags", 12, RED);
-      d.facts.redFlags.forEach(r => para(`⚠ ${r}`));
+      d.facts.redFlags.forEach(r => {
+        if (redactRedFlags) {
+          // Redact: keep first word, mask the rest
+          const words = r.split(/\s+/);
+          const masked = words.map((w, i) => i === 0 ? w : "█".repeat(Math.min(w.length, 8))).join(" ");
+          para(`⚠ ${masked}  [REDACTED]`);
+        } else {
+          para(`⚠ ${r}`);
+        }
+      });
+      y += 4;
+    } else if (!includeRedFlags && d.facts?.redFlags?.length) {
+      heading("Red Flags", 12, SILVER);
+      para(`${d.facts.redFlags.length} sensitive red-flag item(s) excluded from this export per export settings.`);
       y += 4;
     }
 
@@ -248,9 +284,11 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: { ti
       }
     }
 
-    // OCR / processing notes
-    heading("Processing Notes", 12);
-    para(`OCR was ${d.ocr_used ? "applied to one or more scanned pages or images" : "not required (digital text was readable)"}. Extraction performed by ProLAW Document Intelligence.`);
+    // OCR / processing notes (optional)
+    if (includeOcrNotes) {
+      heading("Processing Notes", 12);
+      para(`OCR was ${d.ocr_used ? "applied to one or more scanned pages or images" : "not required (digital text was readable)"}. Extraction performed by ProLAW Document Intelligence.`);
+    }
 
     if (d.facts?.recommendedQuestions?.length) {
       heading("Recommended Follow-up Questions", 12);

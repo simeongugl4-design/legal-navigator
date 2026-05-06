@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch, Download, Printer } from "lucide-react";
-import { exportCaseLibraryPDF } from "@/lib/caseLibraryExport";
+import { Scale, Clock, Trash2, ArrowRight, Plus, BarChart3, Shield, TrendingUp, FileText, Sparkles, AlertOctagon, FileSearch, Download, Printer, Settings2, X } from "lucide-react";
+import { exportCaseLibraryPDF, type PageScale, type ExportSettings } from "@/lib/caseLibraryExport";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useNavigate } from "react-router-dom";

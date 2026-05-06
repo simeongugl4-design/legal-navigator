@@ -148,6 +148,44 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
       pdf.text(tag, margin + 5, y + 10);
       y += 22;
     }
+
+    // Bilingual / multilingual badge + breakdown
+    const bilingual = (d.facts as any)?.bilingual as
+      | { scripts: string[]; segments: number; blocks?: { label: string; charCount: number }[] }
+      | null
+      | undefined;
+    if (includeOcrNotes && bilingual && (bilingual.scripts?.length || bilingual.segments)) {
+      pdf.setFillColor(120, 80, 200);
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      const btag = `MULTILINGUAL · ${bilingual.scripts?.length ?? "?"} SCRIPTS`;
+      const btw = pdf.getTextWidth(btag) + 10;
+      pdf.roundedRect(margin, y, btw, 14, 3, 3, "F");
+      pdf.text(btag, margin + 5, y + 10);
+      y += 22;
+
+      heading("Bilingual Script Segmentation", 12);
+      para(
+        `This document was automatically split into ${bilingual.segments} script block${bilingual.segments === 1 ? "" : "s"} ` +
+        `covering: ${(bilingual.scripts || []).join(", ")}. Each block was extracted independently to maximize accuracy ` +
+        `across mixed-script content (e.g. translated contracts, bilingual filings).`
+      );
+      if (bilingual.blocks?.length) {
+        autoTable(pdf, {
+          startY: y,
+          head: [["#", "Script", "Characters"]],
+          body: bilingual.blocks.map((b, i) => [String(i + 1), b.label, String(b.charCount)]),
+          styles: { fontSize: 9, cellPadding: 4 },
+          headStyles: { fillColor: [120, 80, 200], textColor: 255 },
+          margin: { left: margin, right: margin },
+        });
+        y = (pdf as any).lastAutoTable.finalY + 12;
+      } else {
+        y += 4;
+      }
+    }
+
     divider();
 
     if (d.summary) {

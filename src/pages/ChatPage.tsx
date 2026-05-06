@@ -312,7 +312,7 @@ const ChatPage = () => {
 
     try {
       let ocrUsed = false;
-      let bilingualInfo: { scripts: string[]; segments: number } | null = null;
+      let bilingualInfo: { scripts: string[]; segments: number; blocks?: { label: string; charCount: number }[] } | null = null;
       const ocrLangs = buildOcrLangs({
         selectedLanguageCode: selectedLanguage?.code,
         countryLanguageCodes: selectedCountry?.languages.map(l => l.code),
@@ -331,7 +331,11 @@ const ChatPage = () => {
         }
         if (info.stage === "bilingual" && info.bilingual) {
           const labels = Array.from(new Set(info.bilingual.segments.map(s => s.label)));
-          bilingualInfo = { scripts: labels, segments: info.bilingual.segments.length };
+          bilingualInfo = {
+            scripts: labels,
+            segments: info.bilingual.segments.length,
+            blocks: info.bilingual.segments.map(s => ({ label: s.label, charCount: s.charCount })),
+          };
           setMessages(prev => {
             const last = prev[prev.length - 1];
             const line = `🌐 **Multilingual document detected** — split into ${info.bilingual!.segments.length} blocks across scripts: ${labels.join(", ")}. Each language block will be analyzed independently for higher accuracy.`;
@@ -363,6 +367,10 @@ const ChatPage = () => {
       if (!data?.facts) throw new Error("No facts extracted");
 
       const facts = data.facts as IngestedFacts;
+      // Attach bilingual segmentation info so it persists & renders in PDF exports
+      if (bilingualInfo) {
+        (facts as any).bilingual = bilingualInfo;
+      }
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

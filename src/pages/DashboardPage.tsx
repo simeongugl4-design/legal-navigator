@@ -43,6 +43,31 @@ const DashboardPage = () => {
   const [documents, setDocuments] = useState<CaseDocument[]>([]);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [showExportSettings, setShowExportSettings] = useState<null | "all" | "selected">(null);
+  const [exportSettings, setExportSettings] = useState<{
+    pageScale: PageScale;
+    includeOcrNotes: boolean;
+    includeRedFlags: boolean;
+    redactRedFlags: boolean;
+  }>({
+    pageScale: "a4",
+    includeOcrNotes: true,
+    includeRedFlags: true,
+    redactRedFlags: false,
+  });
+
+  const runExport = (mode: "all" | "selected") => {
+    const docs = mode === "selected" ? documents.filter(d => selectedDocs.has(d.id)) : documents;
+    if (!docs.length) return;
+    exportCaseLibraryPDF(docs, {
+      ...exportSettings,
+      title: mode === "selected"
+        ? `Selected ${docs.length} document${docs.length === 1 ? "" : "s"}`
+        : "Full Case Library",
+    });
+    setShowExportSettings(null);
+    toast({ title: "Export started", description: `PDF (${exportSettings.pageScale.toUpperCase()}) is downloading.` });
+  };
 
   useEffect(() => {
     loadAll();

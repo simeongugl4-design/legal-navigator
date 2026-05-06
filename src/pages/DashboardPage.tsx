@@ -263,10 +263,7 @@ const DashboardPage = () => {
                 <>
                   {selectedDocs.size > 0 && (
                     <button
-                      onClick={() => exportCaseLibraryPDF(
-                        documents.filter(d => selectedDocs.has(d.id)),
-                        { title: `Selected ${selectedDocs.size} document${selectedDocs.size === 1 ? "" : "s"}` }
-                      )}
+                      onClick={() => setShowExportSettings("selected")}
                       className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-primary flex items-center gap-1.5 transition-colors"
                       title="Export selected documents to PDF"
                     >
@@ -274,7 +271,7 @@ const DashboardPage = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => exportCaseLibraryPDF(documents, { title: "Full Case Library" })}
+                    onClick={() => setShowExportSettings("all")}
                     className="text-[11px] px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 transition-colors shadow-lg shadow-primary/20"
                     title="Export entire library as printable PDF report"
                   >

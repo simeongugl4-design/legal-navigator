@@ -331,7 +331,11 @@ const ChatPage = () => {
         }
         if (info.stage === "bilingual" && info.bilingual) {
           const labels = Array.from(new Set(info.bilingual.segments.map(s => s.label)));
-          bilingualInfo = { scripts: labels, segments: info.bilingual.segments.length };
+          bilingualInfo = {
+            scripts: labels,
+            segments: info.bilingual.segments.length,
+            blocks: info.bilingual.segments.map(s => ({ label: s.label, charCount: s.charCount })),
+          };
           setMessages(prev => {
             const last = prev[prev.length - 1];
             const line = `🌐 **Multilingual document detected** — split into ${info.bilingual!.segments.length} blocks across scripts: ${labels.join(", ")}. Each language block will be analyzed independently for higher accuracy.`;

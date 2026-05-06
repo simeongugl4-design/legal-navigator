@@ -228,10 +228,23 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
       y += 4;
     }
 
-    // Red flags
-    if (d.facts?.redFlags?.length) {
+    // Red flags (sensitive — controlled by export settings)
+    if (includeRedFlags && d.facts?.redFlags?.length) {
       heading("Red Flags", 12, RED);
-      d.facts.redFlags.forEach(r => para(`⚠ ${r}`));
+      d.facts.redFlags.forEach(r => {
+        if (redactRedFlags) {
+          // Redact: keep first word, mask the rest
+          const words = r.split(/\s+/);
+          const masked = words.map((w, i) => i === 0 ? w : "█".repeat(Math.min(w.length, 8))).join(" ");
+          para(`⚠ ${masked}  [REDACTED]`);
+        } else {
+          para(`⚠ ${r}`);
+        }
+      });
+      y += 4;
+    } else if (!includeRedFlags && d.facts?.redFlags?.length) {
+      heading("Red Flags", 12, SILVER);
+      para(`${d.facts.redFlags.length} sensitive red-flag item(s) excluded from this export per export settings.`);
       y += 4;
     }
 

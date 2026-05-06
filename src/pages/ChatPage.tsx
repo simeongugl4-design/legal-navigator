@@ -363,6 +363,10 @@ const ChatPage = () => {
       if (!data?.facts) throw new Error("No facts extracted");
 
       const facts = data.facts as IngestedFacts;
+      // Attach bilingual segmentation info so it persists & renders in PDF exports
+      if (bilingualInfo) {
+        (facts as any).bilingual = bilingualInfo;
+      }
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

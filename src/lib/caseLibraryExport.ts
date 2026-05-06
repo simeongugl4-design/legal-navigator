@@ -276,9 +276,11 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
       }
     }
 
-    // OCR / processing notes
-    heading("Processing Notes", 12);
-    para(`OCR was ${d.ocr_used ? "applied to one or more scanned pages or images" : "not required (digital text was readable)"}. Extraction performed by ProLAW Document Intelligence.`);
+    // OCR / processing notes (optional)
+    if (includeOcrNotes) {
+      heading("Processing Notes", 12);
+      para(`OCR was ${d.ocr_used ? "applied to one or more scanned pages or images" : "not required (digital text was readable)"}. Extraction performed by ProLAW Document Intelligence.`);
+    }
 
     if (d.facts?.recommendedQuestions?.length) {
       heading("Recommended Follow-up Questions", 12);

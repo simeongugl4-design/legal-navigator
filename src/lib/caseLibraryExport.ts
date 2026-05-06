@@ -103,18 +103,26 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
 
   y = 140;
   heading(`Library Overview (${docs.length} document${docs.length === 1 ? "" : "s"})`, 14, NAVY);
+  const overviewHead = ["#", "Filename", "Type", "Parties"];
+  if (includeRedFlags) overviewHead.push("Red Flags");
+  if (includeOcrNotes) overviewHead.push("OCR");
+  overviewHead.push("Date");
+
   autoTable(pdf, {
     startY: y,
-    head: [["#", "Filename", "Type", "Parties", "Red Flags", "OCR", "Date"]],
-    body: docs.map((d, i) => [
-      String(i + 1),
-      d.filename,
-      d.document_type || "—",
-      String(d.facts?.parties?.length || 0),
-      String(d.facts?.redFlags?.length || 0),
-      d.ocr_used ? "Yes" : "No",
-      new Date(d.created_at).toLocaleDateString(),
-    ]),
+    head: [overviewHead],
+    body: docs.map((d, i) => {
+      const row: string[] = [
+        String(i + 1),
+        d.filename,
+        d.document_type || "—",
+        String(d.facts?.parties?.length || 0),
+      ];
+      if (includeRedFlags) row.push(String(d.facts?.redFlags?.length || 0));
+      if (includeOcrNotes) row.push(d.ocr_used ? "Yes" : "No");
+      row.push(new Date(d.created_at).toLocaleDateString());
+      return row;
+    }),
     styles: { fontSize: 9, cellPadding: 4 },
     headStyles: { fillColor: NAVY, textColor: 255 },
     alternateRowStyles: { fillColor: [245, 247, 252] },

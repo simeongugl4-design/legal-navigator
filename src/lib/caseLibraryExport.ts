@@ -129,7 +129,7 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
 
     heading(`${idx + 1}. ${d.filename}`, 16, NAVY);
     sub(`${d.document_type || "Document"} • ${d.file_size_kb ?? "?"} KB • Saved ${new Date(d.created_at).toLocaleString()}`);
-    if (d.ocr_used) {
+    if (d.ocr_used && includeOcrNotes) {
       pdf.setFillColor(...ACCENT);
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(8);

@@ -49,11 +49,17 @@ const DashboardPage = () => {
     includeOcrNotes: boolean;
     includeRedFlags: boolean;
     redactRedFlags: boolean;
+    watermarkEnabled: boolean;
+    watermarkText: string;
+    footerEnabled: boolean;
   }>({
     pageScale: "a4",
     includeOcrNotes: true,
     includeRedFlags: true,
     redactRedFlags: false,
+    watermarkEnabled: false,
+    watermarkText: "CONFIDENTIAL",
+    footerEnabled: true,
   });
 
   const runExport = (mode: "all" | "selected") => {

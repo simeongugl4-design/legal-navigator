@@ -27,7 +27,14 @@ export interface ExportSettings {
   includeOcrNotes?: boolean;
   includeRedFlags?: boolean;
   redactRedFlags?: boolean;
+  // Confidentiality watermark + jurisdictional footer
+  watermarkEnabled?: boolean;
+  watermarkText?: string;
+  jurisdictionCountry?: string;
+  jurisdictionLanguage?: string;
+  footerEnabled?: boolean;
 }
+
 
 export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: ExportSettings) {
   if (!docs.length) return;

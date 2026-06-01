@@ -164,6 +164,9 @@ const DashboardPage = () => {
           <h2 className="text-sm font-semibold text-foreground">ProLAW Dashboard</h2>
           <p className="text-[11px] text-muted-foreground">Case History</p>
         </div>
+        <button onClick={() => navigate("/xray")} className="bg-muted hover:bg-muted/80 text-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
+          <FileSearch className="w-3 h-3" /> Contract X-Ray
+        </button>
         <button onClick={() => navigate("/")} className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
           <Plus className="w-3 h-3" /> New Chat
         </button>

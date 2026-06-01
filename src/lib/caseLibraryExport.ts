@@ -341,14 +341,67 @@ export function exportCaseLibraryPDF(docs: ExportableCaseDocument[], opts?: Expo
     }
   });
 
-  // Footer page numbers
+  // Watermark + jurisdictional footer on every page
   const total = pdf.getNumberOfPages();
+  const watermarkEnabled = opts?.watermarkEnabled ?? false;
+  const watermarkText = (opts?.watermarkText || "CONFIDENTIAL").toUpperCase();
+  const footerEnabled = opts?.footerEnabled ?? true;
+  const country = opts?.jurisdictionCountry;
+  const language = opts?.jurisdictionLanguage;
+  const timestamp = new Date().toLocaleString();
+  const jurisdictionLine = [country && `Jurisdiction: ${country}`, language && `Language: ${language}`]
+    .filter(Boolean).join("  •  ");
+
   for (let i = 1; i <= total; i++) {
     pdf.setPage(i);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8);
-    pdf.setTextColor(...SILVER);
-    pdf.text(`ProLAW Case Library  •  Page ${i} of ${total}`, pageW / 2, pageH - 18, { align: "center" });
+
+    // Diagonal watermark behind content
+    if (watermarkEnabled) {
+      pdf.saveGraphicsState();
+      // @ts-ignore — jsPDF GState typing
+      pdf.setGState(new (pdf as any).GState({ opacity: 0.08 }));
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(80);
+      pdf.setTextColor(...RED);
+      pdf.text(watermarkText, pageW / 2, pageH / 2, {
+        align: "center",
+        angle: 35,
+        baseline: "middle",
+      });
+      pdf.restoreGraphicsState();
+    }
+
+    // Footer
+    if (footerEnabled) {
+      pdf.setDrawColor(...SILVER);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, pageH - 32, pageW - margin, pageH - 32);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(...SILVER);
+
+      // Left: jurisdiction + language
+      if (jurisdictionLine) {
+        pdf.text(jurisdictionLine, margin, pageH - 20);
+      }
+      // Center: confidentiality + timestamp
+      const centerParts = [
+        watermarkEnabled ? watermarkText : null,
+        `Generated ${timestamp}`,
+      ].filter(Boolean).join("  •  ");
+      pdf.text(centerParts, pageW / 2, pageH - 20, { align: "center" });
+      // Right: page numbers
+      pdf.text(`Page ${i} of ${total}`, pageW - margin, pageH - 20, { align: "right" });
+
+      pdf.setFontSize(7);
+      pdf.text("ProLAW Case Library  •  Agentic Legal Intelligence", pageW / 2, pageH - 10, { align: "center" });
+    } else {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(...SILVER);
+      pdf.text(`ProLAW Case Library  •  Page ${i} of ${total}`, pageW / 2, pageH - 18, { align: "center" });
+    }
   }
 
   const fname = `prolaw-case-library-${new Date().toISOString().slice(0, 10)}.pdf`;

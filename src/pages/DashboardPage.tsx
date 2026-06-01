@@ -535,6 +535,48 @@ const DashboardPage = () => {
               </label>
             )}
 
+            {/* Confidentiality watermark */}
+            <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-md hover:bg-secondary/30">
+              <input
+                type="checkbox"
+                checked={exportSettings.watermarkEnabled}
+                onChange={(e) => setExportSettings(s => ({ ...s, watermarkEnabled: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-primary"
+              />
+              <div className="flex-1">
+                <div className="text-xs font-medium text-foreground">Confidentiality watermark</div>
+                <div className="text-[10px] text-muted-foreground mb-1.5">
+                  Diagonal watermark on every page (e.g. CONFIDENTIAL, PRIVILEGED).
+                </div>
+                {exportSettings.watermarkEnabled && (
+                  <input
+                    type="text"
+                    value={exportSettings.watermarkText}
+                    onChange={(e) => setExportSettings(s => ({ ...s, watermarkText: e.target.value }))}
+                    placeholder="CONFIDENTIAL"
+                    className="w-full text-[11px] px-2 py-1 rounded bg-secondary/50 border border-border text-foreground"
+                  />
+                )}
+              </div>
+            </label>
+
+            {/* Jurisdictional footer */}
+            <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-md hover:bg-secondary/30">
+              <input
+                type="checkbox"
+                checked={exportSettings.footerEnabled}
+                onChange={(e) => setExportSettings(s => ({ ...s, footerEnabled: e.target.checked }))}
+                className="mt-0.5 w-4 h-4 accent-primary"
+              />
+              <div>
+                <div className="text-xs font-medium text-foreground">Jurisdictional footer</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Adds country, language, and timestamp to the footer of every page
+                  {consultations[0] ? ` (${consultations[0].country} • ${consultations[0].language})` : ""}.
+                </div>
+              </div>
+            </label>
+
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowExportSettings(null)}

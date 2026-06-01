@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/appStore";
 import { useToast } from "@/hooks/use-toast";
 import { extractTextFromFile } from "@/lib/documentParser";
-import { ocrLangsFor } from "@/lib/ocrLanguages";
+import { buildOcrLangs } from "@/lib/ocrLanguages";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
 
 interface Clause {
@@ -79,7 +79,7 @@ const ContractXRayPage = () => {
           else if (info.stage === "parsing") setProgressMsg(`Parsing page ${info.page}/${info.totalPages}`);
           else if (info.stage === "bilingual") setProgressMsg(info.message || "Bilingual segmentation");
         },
-        { langs: ocrLangsFor(selectedCountry.code, selectedLanguage?.code) },
+        { langs: buildOcrLangs({ selectedLanguageCode: selectedLanguage?.code, countryLanguageCodes: selectedCountry.languages?.map(l => l.code) }) },
       );
       setParsing(false);
       setAnalyzing(true);

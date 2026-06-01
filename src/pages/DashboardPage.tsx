@@ -65,8 +65,11 @@ const DashboardPage = () => {
   const runExport = (mode: "all" | "selected") => {
     const docs = mode === "selected" ? documents.filter(d => selectedDocs.has(d.id)) : documents;
     if (!docs.length) return;
+    const latest = consultations[0];
     exportCaseLibraryPDF(docs, {
       ...exportSettings,
+      jurisdictionCountry: latest?.country,
+      jurisdictionLanguage: latest?.language,
       title: mode === "selected"
         ? `Selected ${docs.length} document${docs.length === 1 ? "" : "s"}`
         : "Full Case Library",

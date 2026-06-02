@@ -37,7 +37,7 @@ const OnboardingPage = () => {
       >
         {/* Logo with AI Loader ring */}
         <div className="relative flex items-center justify-center">
-          <AILoader size={160} text="ProLAW" />
+          <AILoader size={160} />
           <img src={prolawLogo} alt="ProLAW" className="absolute w-16 h-16 rounded-xl shadow-lg shadow-primary/20 opacity-90" />
         </div>
         <div className="text-center">

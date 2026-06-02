@@ -5,6 +5,7 @@ import { countries } from "@/data/countries";
 import { useAppStore } from "@/store/appStore";
 import { useNavigate } from "react-router-dom";
 import prolawLogo from "@/assets/prolaw-logo.jpeg";
+import { Component as AILoader } from "@/components/ui/ai-loader";
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
@@ -34,9 +35,10 @@ const OnboardingPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 w-full max-w-lg flex flex-col items-center gap-6"
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img src={prolawLogo} alt="ProLAW" className="w-24 h-24 rounded-2xl shadow-lg shadow-primary/20" />
+        {/* Logo with AI Loader ring */}
+        <div className="relative flex items-center justify-center">
+          <AILoader size={160} text="ProLAW" />
+          <img src={prolawLogo} alt="ProLAW" className="absolute w-16 h-16 rounded-xl shadow-lg shadow-primary/20 opacity-90" />
         </div>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground">ProLAW</h1>

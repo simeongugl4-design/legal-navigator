@@ -2,10 +2,11 @@ import * as React from "react";
 
 interface LoaderProps {
   size?: number;
-  text?: string;
+  // text is intentionally locked to "Generating" — do not expose as a prop
 }
 
-export const Component: React.FC<LoaderProps> = ({ size = 200, text = "Generating" }) => {
+export const Component: React.FC<LoaderProps> = ({ size = 200 }) => {
+  const text = "Generating"; // LOCKED: do not change
   const letters = text.split("");
   const orbitDots = 8;
 
